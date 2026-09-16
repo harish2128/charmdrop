@@ -1,0 +1,64 @@
+{
+  "name": "charmdrop",
+  "productName": "CharmDrop",
+  "version": "1.0.0",
+  "description": "A little charm for your screen.",
+  "main": "main.js",
+  "author": "CharmDrop",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder --win nsis",
+    "build:win": "electron-builder --win nsis"
+  },
+  "keywords": [
+    "electron",
+    "charmdrop",
+    "desktop-widget"
+  ],
+  "devDependencies": {
+    "electron": "^34.0.0",
+    "electron-builder": "^26.15.3",
+    "png-to-ico": "^3.0.2"
+  },
+  "build": {
+    "appId": "com.charmdrop.desktop",
+    "productName": "CharmDrop",
+    "executableName": "CharmDrop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "about.html",
+      "style.css",
+      "data/**/*",
+      "js/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icons/charmdrop.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "CharmDrop",
+      "runAfterFinish": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    }
+  }
+}

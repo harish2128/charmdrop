@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CharmDrop Desktop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="charm-stage">
+    <!-- Flexible Rope Physics Canvas -->
+    <canvas id="ropeCanvas" class="rope-canvas" width="340" height="440"></canvas>
+
+    <!-- Hanging Pendulum Rig Anchored at Fixed Screen Top -->
+    <div id="charmRig" class="charm-rig">
+      <!-- Dynamic Container populated by CharmRenderer -->
+      <div id="charmContainer" class="charm-container"></div>
+    </div>
+
+    <!-- Floating Helper Hint -->
+    <div id="hintPill" class="charm-hint-pill">
+      <span>Scroll • Drag • <kbd>Ctrl+Shift+C</kbd> Choose Charm</span>
+    </div>
+
+    <!-- Compact Floating Charm Selector Panel (Toggled via Ctrl+Shift+C) -->
+    <div id="charmSelectorPanel" class="charm-selector-panel" style="display: none;">
+      <div class="selector-header">
+        <div class="selector-title-wrap">
+          <span class="selector-badge">CharmDrop</span>
+          <span class="selector-title">Choose Charm</span>
+        </div>
+        <button id="selectorCloseBtn" class="selector-close-btn" title="Close (Esc)">✕</button>
+      </div>
+
+      <!-- Charm list selection -->
+      <div id="charmList" class="selector-charm-list"></div>
+
+      <!-- Quick Position Presets Section -->
+      <div id="selectorPositionRow" class="selector-preset-row">
+        <span class="selector-preset-label">Position</span>
+        <div class="selector-preset-buttons">
+          <button type="button" class="preset-btn" data-preset="top-left" title="Move to Top Left">Left</button>
+          <button type="button" class="preset-btn" data-preset="top-center" title="Move to Top Center">Center</button>
+          <button type="button" class="preset-btn" data-preset="top-right" title="Move to Top Right">Right</button>
+        </div>
+      </div>
+
+      <!-- Daily Status Section (Displayed when active charm has dailyRefresh: true) -->
+      <div id="dailyStatusSection" class="selector-daily-card" style="display: none;"></div>
+
+      <div class="selector-footer">
+        <span>Press <kbd>Ctrl+Shift+C</kbd> to toggle</span>
+      </div>
+    </div>
+
+    <!-- Development-Only Physics & Audio Debug Overlay (Toggled via Ctrl+Shift+D) -->
+    <div id="physicsDebugOverlay" class="physics-debug-overlay" style="display: none;"></div>
+  </div>
+
+  <script type="module" src="js/charmRenderer.js"></script>
+</body>
+</html>
