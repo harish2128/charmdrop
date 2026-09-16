@@ -2,78 +2,87 @@
 
 **Project**: CharmDrop  
 **Release**: Version 1.0.0 (Client Handover Edition)  
-**Platforms**: Windows Desktop Application (Windows 10 & 11, 64-bit) & Companion Web Application  
+**Deliverables**:
+1. **CharmDrop Website** (React + Vite Web Platform)
+2. **CharmDrop Browser Extension** (Manifest V3 for Google Chrome & Microsoft Edge)
+3. **CharmDrop Windows Desktop App** (Electron Native App for Windows 10 & 11)  
 **Date**: September 2026  
 
 ---
 
 ## 1. Executive Summary: What CharmDrop Is
 
-CharmDrop is an interactive desktop screen companion and digital talisman platform. Built natively for Windows 10 and 11, it renders authentic hanging charms from the top edge of the user's screen. Each charm features real-time Verlet rope physics, mouse cursor proximity repulsion, momentum release physics, and custom sound effects.
+CharmDrop is an interactive screen companion and digital talisman platform that brings personality, motion, and serene luck to user screens.
 
-The accompanying web application serves as the public showcase, dynamic interactive catalog, and installer distribution hub for CharmDrop.
+CharmDrop is delivered across three complementary channels:
+- **Windows Desktop Application**: A native always-on-top desktop widget hanging from the top edge of Windows 10 & 11 screens.
+- **Browser Extension**: A Manifest V3 Chromium extension hanging charms seamlessly from the viewport top of any webpage using Shadow DOM encapsulation.
+- **Companion Website**: The public hub, interactive gallery, and software distribution center.
 
 ---
 
-## 2. Key Features
+## 2. Key Features Across All Platforms
 
-- **Realistic Physics Cord**: 12-point Verlet particle chain simulation with organic wind swaying, downward gravity, and natural wave propagation.
-- **Dynamic Mouse Reactions**: As the cursor approaches a charm (<= 150px), the talisman smoothly shifts and pushes away.
-- **Drag, Flick & Scroll**: Users can grab and drag the charm anywhere along the screen top, flick it with momentum, or scroll to oscillate.
-- **Curated 13 Authentic Lucky Charms**: Handcrafted transparent assets including Nimbu Mirchi, Fortune Bell, Maneki Neko, Daruma, Evil Eye, Dreamcatcher, Four Leaf Clover, and more.
-- **Controlled Sound Architecture**: Realistic church bell chime for Fortune Bell and cat meow for Lucky Cat, with strict zero sound bleed to other charms.
+- **Realistic Verlet Physics Rope**: 12-point particle chain simulation with organic breeze sway, downward gravity, and natural wave propagation.
+- **Dynamic Mouse Proximity Reaction**: Approaching the charm (<= 150px) naturally sways and repulses the talisman.
+- **Drag, Flick & Scroll**: Users can grab and drag the charm horizontally, flick with momentum, or scroll to oscillate.
+- **Curated 13 Authentic Lucky Charms**: 100% transparent handcrafted assets (Nimbu Mirchi, Fortune Bell, Maneki Neko, Daruma, Evil Eye, Dreamcatcher, Lucky Clover, Horseshoe, Lotus, etc.).
+- **Strict Sound Architecture**:
+  - **Fortune Bell**: Plays `universfield-single-church-bell-2-352062.mp3` once upon receiving its first meaningful impulse, disarming during decay oscillations.
+  - **Lucky Cat**: Plays `dragon-studio-cartoon-cat-meow-487661.mp3` once when cursor enters proximity zone (<= 140px), re-arming only upon full exit (> 200px).
+  - **All Other 11 Charms**: Strictly silent (`sound: null`).
 - **Daily Nimbu Mirchi Talisman**: A 24-hour talisman cycle that fades after 24 hours, inviting the user to hang a fresh Nimbu Mirchi daily.
-- **Windows Tray & Position Presets**: Full system tray integration, position presets (Top-Left, Top-Center, Top-Right), persistent custom coordinates, and auto-start preferences.
 
 ---
 
-## 3. Website Functionality
+## 3. Browser Extension Architecture & Installation (Manifest V3)
 
-The companion website is a React single-page application built with Vite and Framer Motion.
+The browser extension is housed in `/extension`.
+
+### How to Install / Load Unpacked:
+1. Open **Google Chrome** or **Microsoft Edge**.
+2. Navigate to:
+   - Chrome: `chrome://extensions/`
+   - Edge: `edge://extensions/`
+3. Turn on **Developer mode** (toggle in upper right or left sidebar).
+4. Click **Load unpacked**.
+5. Select the `extension` folder (`d:\Charmdrop\extension`).
+6. The CharmDrop icon will appear in the browser toolbar.
+
+### Technical & Security Highlights:
+- **Manifest V3 Compliant**: Zero `eval()`, zero remotely hosted executable code.
+- **Minimum Permissions**: Only `storage` and `activeTab`. Zero invasive permissions (`history`, `cookies`, `webRequest` are not requested).
+- **Shadow DOM Isolation**: All extension DOM elements and styles are mounted inside `#charmdrop-extension-root` within an isolated Shadow Root. Host page CSS cannot alter the charm, and charm CSS cannot leak into host pages.
+- **Viewport Fixed**: Anchored via `position: fixed; top: 0;` so webpage scrolling leaves the charm cleanly at the top of the browser viewport.
+- **Pointer Events**: Only the charm itself has `pointer-events: auto; cursor: grab;`. All surrounding areas have `pointer-events: none;`, ensuring zero interference with webpage buttons, inputs, and links.
+- **Background Tab Efficiency**: Automatically pauses the physics animation loop when `document.hidden === true`.
+
+---
+
+## 4. Website Functionality
+
+The companion website is a React SPA built with Vite and Framer Motion.
 
 - **Home (`/`)**: Hero demonstration, interactive physics showcases, 24-hour Nimbu preview, feature breakdown, social proof, and direct download links.
 - **Charms Catalog (`/charms`)**: Full interactive gallery of all 13 approved Lucky charms with category filtering, real-time search, sorting, and modal previews with audio triggers.
-- **How It Works (`/how-it-works`)**: Four-step walkthrough covering download, installation, charm selection, and desktop interaction.
-- **Download Hub (`/download`)**: Official Windows release installer link, installation steps, and cross-device handoff tools.
+- **How It Works (`/how-it-works`)**: Four-step walkthrough covering download, installation, charm selection, and desktop/browser interaction.
+- **Download Hub (`/download`)**: Official Windows release installer link, extension instructions, and system specs.
 - **About (`/about`) & Contact (`/contact`)**: Brand story, developer documentation links, support contact details, and platform specs.
-- **Privacy Policy (`/privacy`) & Terms (`/terms`)**: Standard platform privacy and terms agreements.
 
 ---
 
-## 4. Desktop Functionality
+## 5. Desktop Application Functionality
 
 The desktop app is built with Electron and packaged using NSIS for Windows.
 
-- **Transparent Always-on-Top Stage**: The charm hangs unobtrusively above open windows.
-- **Mouse Pass-Through**: When the cursor is outside the interaction zone, clicks pass right through to background windows without interference.
-- **Single Instance Enforcement**: Prevents accidental duplicate windows or tray instances.
-- **Low Resource Usage**: Uses native `requestAnimationFrame` and efficient Verlet integration for minimal CPU footprint (&lt;0.5% idle).
+- **Transparent Always-on-Top Stage**: The charm hangs unobtrusively above open Windows apps.
+- **Mouse Pass-Through**: Clicks outside the charm pass directly to underlying windows.
+- **Single Instance Enforcement**: Prevents duplicate running instances.
+- **System Tray Controls**: Preset positions (Top Left, Top Center, Top Right), Reset Position, Startup Toggle, Sound Effects Toggle.
 
 ---
 
-## 5. How Users Install CharmDrop
-
-1. Download `CharmDrop-Setup-1.0.0.exe` from the official download page.
-2. Run the installer. The NSIS installer will set up CharmDrop and create desktop and Start Menu shortcuts.
-3. CharmDrop will immediately launch and dock to the top-right of the primary display.
-
----
-
-## 6. How Users Change Charms
-
-Users have two ways to switch charms:
-
-1. **Charm Selector Panel (`Ctrl + Shift + C`)**:
-   - Press `Ctrl + Shift + C` or click the CharmDrop System Tray icon.
-   - Click any charm from the list. The active charm smoothly cross-fades into place.
-   - Press `Esc` or click `✕` to close.
-2. **System Tray Menu**:
-   - Right-click the CharmDrop icon in the Windows taskbar system tray.
-   - Hover over **Change Charm** &gt; **Lucky** and select the desired charm.
-
----
-
-## 7. System Tray Controls & Shortcuts
+## 6. System Tray Controls & Shortcuts (Desktop)
 
 | Action | System Tray Option | Keyboard Shortcut |
 | :--- | :--- | :--- |
@@ -83,146 +92,50 @@ Users have two ways to switch charms:
 | **Reset Position** | *Reset Position* | `Ctrl + Shift + R` |
 | **Toggle Sound Effects** | Checkbox: *Sound Effects* | — |
 | **Launch at Startup** | Checkbox: *Launch at Startup* | — |
-| **Daily Nimbu Action** | *Hang New Nimbu Mirchi* | — |
 | **About Window** | *About CharmDrop* | — |
 | **Quit CharmDrop** | *Quit CharmDrop* | `Ctrl + Shift + Q` |
 
 ---
 
-## 8. Sound Behavior & Strict Rules
+## 7. Adding a Future Charm
 
-To maintain a serene desktop atmosphere, sound effects are strictly governed:
+To register a new charm across all 3 platforms:
 
-1. **Fortune Bell**: Plays `universfield-single-church-bell-2-352062.mp3` once upon receiving its first meaningful impulse. It automatically disarms during subsequent decay oscillations to prevent acoustic clutter.
-2. **Lucky Cat (Maneki Neko)**: Plays `dragon-studio-cartoon-cat-meow-487661.mp3` once when the cursor enters the 150px interaction zone. Disarms until the cursor completely exits (&gt;220px) and re-enters.
-3. **All Other 11 Charms**: Completely silent (`sound: null`).
-4. **Sound Effects OFF**: When disabled in the system tray, all sounds are muted globally.
-
----
-
-## 9. Daily Nimbu Mirchi Lifecycle
-
-The Nimbu Mirchi talisman features a daily refresh ritual:
-
-- **Fresh State**: Lemon and 7 chillies appear vibrant and saturated.
-- **Faded State**: After 24 hours (or at midnight calendar rollover), the talisman smoothly fades to a desaturated look.
-- **Refresh Action**: The user can click **Hang New Nimbu Mirchi** in the selector panel or system tray to hang a fresh talisman with a gentle drop animation.
-- **Persistence**: Daily state and timestamps are saved locally in Electron's `userData/charmdrop-config.json`.
-
----
-
-## 10. How Admins/Developers Add a Future Charm
-
-1. Prepare a transparent 32-bit PNG (recommended dimensions: ~300x600px).
-2. Save the image in:
+1. Prepare a transparent 32-bit PNG.
+2. Save the asset in:
    - `src/assets/charms/lucky/your-charm.png` (Website)
+   - `extension/assets/charms/lucky/your-charm.png` (Extension)
    - `desktop-test/assets/charms/lucky/your-charm.png` (Desktop)
-3. Register the charm in `src/data/charmsData.js`:
-   ```javascript
-   import yourCharmImage from "../assets/charms/lucky/your-charm.png";
-   
-   // Add to charmsData array:
-   {
-     id: "your-charm",
-     name: "Your Charm Name",
-     category: "Lucky",
-     image: yourCharmImage,
-     iconKey: "your-charm",
-     description: "Description of your talisman.",
-     color: "#10B981",
-     accentColor: "#34D399",
-     isNew: true,
-     isDaily: false,
-     isPopular: false,
-     tag: "Special Tag",
-     swingSpeed: 3.2,
-     physics: { weight: 1.0, swingMultiplier: 1.0, dampingMultiplier: 1.0 },
-     sound: null
-   }
-   ```
-4. Register the charm in `desktop-test/data/charms.js`:
-   ```javascript
-   {
-     id: "your-charm",
-     name: "Your Charm Name",
-     category: "Lucky",
-     image: "assets/charms/lucky/your-charm.png",
-     scale: 1,
-     maxWidth: 105,
-     maxHeight: 190,
-     ropeOffsetX: 0,
-     ropeOffsetY: 0,
-     ropeLength: 65,
-     dailyRefresh: false,
-     physics: { weight: 1.0, swingMultiplier: 1.0, dampingMultiplier: 1.0 },
-     sound: null,
-     description: "Description of your talisman."
-   }
-   ```
-5. Rebuild website and desktop installer.
+3. Register the charm in:
+   - `src/data/charmsData.js`
+   - `extension/data/charms.js`
+   - `desktop-test/data/charms.js`
+4. Rebuild website (`npm run build`) and desktop installer (`npm run build:win` in `desktop-test/`).
 
 ---
 
-## 11. How to Replace an Image
+## 8. Release Workflows
 
-To update the artwork of an existing charm (e.g., `lucky-lotus.png`):
-1. Overwrite the file in both `src/assets/charms/lucky/` and `desktop-test/assets/charms/lucky/` with the new transparent PNG.
-2. Maintain identical filenames to avoid updating imports.
-3. Run `npm run build` in root and `npm run build:win` in `desktop-test/`.
-
----
-
-## 12. How to Update the Desktop Installer
-
-When code or assets are modified:
-```bash
-cd desktop-test
-npm run build:win
-```
-The output will be created at `desktop-test/release/CharmDrop-Setup-1.0.0.exe`.  
-*Note*: If releasing a public update, increment `"version": "1.0.1"` in `desktop-test/package.json` and `src/config/siteConfig.js`.
-
----
-
-## 13. How to Deploy the Website
-
-1. Build the production web bundle:
+1. **Website Release**:
    ```bash
    npm run build
    ```
-2. The static output files are in `/dist`.
-3. Deploy `/dist` to your static hosting provider (e.g., Vercel, Netlify, Cloudflare Pages, AWS S3/CloudFront).
+   Deploy `/dist` directory to your static hosting provider (Vercel, Netlify, Cloudflare Pages).
+
+2. **Browser Extension Release**:
+   Zip the contents of the `/extension` directory and submit to the **Chrome Web Store Developer Dashboard** and **Microsoft Edge Add-ons Developer Portal**.
+
+3. **Windows Desktop Release**:
+   ```bash
+   cd desktop-test
+   npm run build:win
+   ```
+   Upload `desktop-test/release/CharmDrop-Setup-1.0.0.exe` to your GitHub Releases.
 
 ---
 
-## 14. Repository Information Placeholders
+## 9. Known System Behavior & Considerations
 
-- **Primary Repository**: `https://github.com/charmdrop/charmdrop`
-- **Releases URL**: `https://github.com/charmdrop/charmdrop/releases`
-- **Default Branch**: `main`
-
----
-
-## 15. Hosting & Domain Placeholders
-
-- **Production Domain**: `https://charmdrop.app`
-- **Support Contact**: `support@charmdrop.app`
-- **General Inquiries**: `hello@charmdrop.app`
-- **Instagram**: `https://instagram.com/charmdrop.app`
-
----
-
-## 16. Known System Behavior & Considerations
-
-1. **Windows SmartScreen Notice**: Because the installer binary is self-built and not signed with a paid Extended Validation (EV) code signing certificate, Windows SmartScreen may display a standard prompt during initial install (*"Windows protected your PC"* &gt; click *"More info"* &gt; *"Run anyway"*). Purchasing an EV code signing certificate will remove this prompt.
-2. **Display Resolution Shifts**: CharmDrop dynamically re-validates screen work areas when monitors are attached or disconnected to ensure the charm remains visible.
-3. **Multi-Monitor Windows**: When dragged across monitor boundaries, CharmDrop anchors to the work area top of the active display nearest to the window center.
-
----
-
-## 17. Support & Maintenance Notes
-
-- All core physics algorithms are modularized in `desktop-test/js/charmEngine.js`.
-- Audio scheduling and hysteresis boundaries are isolated in `desktop-test/js/charmSoundManager.js`.
-- State persistence utilizes standard JSON files in `%APPDATA%/CharmDrop/charmdrop-config.json`.
-- The codebase contains zero external telemetry, tracking, or background analytics.
+1. **Restricted Browser Pages**: Chrome and Edge strictly block extensions on internal system pages (`chrome://`, `edge://`, and the Chrome Web Store). The extension runs on all standard HTTP and HTTPS web pages.
+2. **Windows SmartScreen Notice**: Unsigned installers display standard Windows SmartScreen notifications until signed with a digital code signing certificate.
+3. **Zero Telemetry**: All three CharmDrop platforms run with 100% offline-capable local assets with zero telemetry or tracking.

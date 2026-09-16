@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CharmDrop</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand-group">
+        <img src="../assets/icons/charmdrop.png" alt="CharmDrop" class="brand-logo" />
+        <div class="brand-text">
+          <span class="brand-name">CharmDrop</span>
+          <span class="brand-version">v1.0.0</span>
+        </div>
+      </div>
+      <label class="switch-toggle" title="Enable / Disable CharmDrop">
+        <input type="checkbox" id="masterToggle" checked />
+        <span class="slider round"></span>
+      </label>
+    </header>
+
+    <!-- Active Charm Card -->
+    <div class="active-charm-card" id="activeCharmCard">
+      <div class="active-charm-thumb-wrap">
+        <img id="activeCharmImg" src="../assets/charms/lucky/nimbu-mirchi.png" alt="Active Charm" class="active-thumb-img" />
+      </div>
+      <div class="active-charm-info">
+        <div class="active-charm-header">
+          <span class="active-badge">Active Charm</span>
+          <span id="soundBadge" class="sound-pill" title="Sound enabled">🔔 Sound</span>
+        </div>
+        <h3 id="activeCharmName" class="active-charm-title">Nimbu Mirchi</h3>
+        <p id="activeCharmDesc" class="active-charm-desc">Daily refresh talisman</p>
+      </div>
+    </div>
+
+    <!-- Quick Controls: Position & Sound -->
+    <div class="controls-section">
+      <!-- Position Presets -->
+      <div class="control-row">
+        <span class="control-label">Position</span>
+        <div class="preset-btn-group" id="presetGroup">
+          <button type="button" class="preset-btn" data-preset="top-left">Left</button>
+          <button type="button" class="preset-btn" data-preset="top-center">Center</button>
+          <button type="button" class="preset-btn is-active" data-preset="top-right">Right</button>
+        </div>
+      </div>
+
+      <!-- Sound Toggle -->
+      <div class="control-row">
+        <span class="control-label">Sound Effects</span>
+        <label class="switch-toggle mini" title="Toggle Sound Effects">
+          <input type="checkbox" id="soundToggle" checked />
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Charm Selection Section -->
+    <div class="selection-section">
+      <div class="section-title-row">
+        <span class="section-title">Choose Charm</span>
+        <span class="section-count" id="charmCount">13 Charms</span>
+      </div>
+
+      <!-- Charms Grid List -->
+      <div class="charms-grid" id="charmsGrid">
+        <!-- Rendered dynamically by popup.js -->
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <span>Drag charm in page to move</span>
+      <span class="footer-dot">•</span>
+      <a href="https://charmdrop.app" target="_blank" rel="noopener noreferrer">charmdrop.app</a>
+    </footer>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

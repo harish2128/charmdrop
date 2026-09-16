@@ -14,6 +14,12 @@ export const siteConfig = {
       releaseTag: "v1.0.0",
       architecture: "64-bit",
       supportedOS: "Windows 10 & Windows 11"
+    },
+    extension: {
+      version: "1.0.0",
+      chromeStoreUrl: null,
+      edgeStoreUrl: null,
+      supportedBrowsers: "Chrome, Edge, Brave, Opera (Chromium)"
     }
   },
   instagramUrl: "https://instagram.com/charmdrop.app",

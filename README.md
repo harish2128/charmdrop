@@ -1,6 +1,9 @@
 # CharmDrop
 
-CharmDrop is a lightweight, interactive desktop widget and companion website designed for Windows 10 and 11. It allows users to hang authentic talismans, fortune bells, and daily refreshed charms (such as the traditional Nimbu Mirchi) from the top of their screen with realistic pendulum physics, cursor proximity interactions, and audio feedback.
+CharmDrop is an interactive screen companion, digital talisman platform, and companion website. Available across three primary distributions:
+1. **CharmDrop Companion Website** (React + Vite single-page web app)
+2. **CharmDrop Browser Extension** (Manifest V3 for Google Chrome, Microsoft Edge, and Chromium browsers)
+3. **CharmDrop Windows Desktop App** (Native Electron application for Windows 10 & 11)
 
 ---
 
@@ -9,15 +12,14 @@ CharmDrop is a lightweight, interactive desktop widget and companion website des
 - **Interactive Verlet Physics Engine**: 12-point particle rope simulation with organic breeze sway, realistic momentum release, and settling dynamics.
 - **Cursor Proximity & Drag Interaction**: Charms naturally react and push away from moving mouse cursors, with support for fluid drag, flick, and mouse wheel impulses.
 - **Authentic Transparent Assets**: 13 canonical handcrafted Lucky charms with authentic transparent backgrounds and centered aspect ratios.
-- **Targeted Sound Effects Engine**: Meaningful chime audio for Fortune Bell and reactive meow audio for Maneki Neko (Lucky Cat).
+- **Targeted Sound Effects Engine**: Meaningful chime audio for Fortune Bell and reactive meow audio for Maneki Neko (Lucky Cat). All other charms remain silent.
 - **Daily Nimbu Mirchi Talisman**: 24-hour fresh talisman lifecycle with morning fresh hanging and fading state persistence.
-- **Windows System Tray & Positioning**: Full system tray integration with presets (Top-Left, Top-Center, Top-Right), custom position memory, startup launch toggle, and hotkey shortcuts.
-- **Single Instance & Security**: Strict Electron production hardening (`contextIsolation: true`, `nodeIntegration: false`, zero direct shell/fs renderer access).
-- **Responsive Website & Gallery**: Fast companion web application built with React, Vite, Framer Motion, and Lucide icons.
+- **Browser Extension (Manifest V3)**: Shadow DOM encapsulated overlay hanging directly from webpage viewport tops without damaging website layout or CSS.
+- **Windows Desktop App**: System tray integration with presets (Top-Left, Top-Center, Top-Right), custom position memory, startup launch toggle, and hotkey shortcuts.
 
 ---
 
-## Website Setup
+## 1. Website Setup
 
 ### Prerequisites
 - Node.js (v18 or higher recommended)
@@ -40,7 +42,23 @@ npm run preview
 
 ---
 
-## Desktop App Setup
+## 2. Browser Extension Setup (Chrome & Edge)
+
+The browser extension is located in `/extension` using Manifest V3.
+
+### How to Test / Load Unpacked:
+1. Open Google Chrome or Microsoft Edge.
+2. Navigate to extensions management:
+   - Chrome: `chrome://extensions/`
+   - Edge: `edge://extensions/`
+3. Enable **Developer mode** (toggle in upper-right or left sidebar).
+4. Click **Load unpacked**.
+5. Select the `extension` folder (`d:\Charmdrop\extension`).
+6. The CharmDrop extension icon will appear in your browser toolbar! Click it to open the popup, choose charms, toggle sound, and adjust position presets.
+
+---
+
+## 3. Desktop App Setup (Windows)
 
 The desktop application is located in the `desktop-test/` directory.
 
@@ -77,6 +95,14 @@ Charmdrop/
 │   ├── pages/                 # Website route pages
 │   ├── styles/                # CSS design system
 │   └── utils/soundEffects.js  # Web Audio API synthesis
+├── extension/                 # Manifest V3 Browser Extension (NEW)
+│   ├── manifest.json          # Manifest V3 configuration
+│   ├── background.js          # Background service worker
+│   ├── content.js             # Content script with Shadow DOM & Verlet rope
+│   ├── content.css            # Extension root isolation styling
+│   ├── data/charms.js         # Canonical extension charm registry
+│   ├── popup/                 # Extension popup UI (HTML, CSS, JS)
+│   └── assets/                # Local charm PNGs, icons, and MP3 audio
 ├── desktop-test/              # Electron Desktop Application
 │   ├── main.js                # Main process (tray, window, IPC, persistence)
 │   ├── preload.js             # Secure context bridge API
@@ -96,9 +122,10 @@ Charmdrop/
 
 ## Charm Asset Management
 
-- **Desktop Assets**: Stored in `desktop-test/assets/charms/lucky/` as transparent PNGs (PNG-32).
+- **Desktop Assets**: Stored in `desktop-test/assets/charms/lucky/` as transparent PNGs.
+- **Extension Assets**: Stored in `extension/assets/charms/lucky/` as transparent PNGs.
 - **Website Assets**: Stored in `src/assets/charms/lucky/` as transparent PNGs.
-- **Audio Assets**: Stored in `desktop-test/assets/sounds/` and `public/assets/sounds/`.
+- **Audio Assets**: Stored in `extension/assets/sounds/`, `desktop-test/assets/sounds/`, and `public/assets/sounds/`.
 
 ### Canonical 13 Approved Charms
 
@@ -120,10 +147,10 @@ Charmdrop/
 
 ## Adding a Charm
 
-To register a new charm in both the website and desktop application:
+To register a new charm across all targets:
 
-1. Place the transparent PNG artwork into `src/assets/charms/lucky/` and `desktop-test/assets/charms/lucky/`.
-2. Add the charm object to `src/data/charmsData.js` and `desktop-test/data/charms.js`.
+1. Place the transparent PNG artwork into `src/assets/charms/lucky/`, `extension/assets/charms/lucky/`, and `desktop-test/assets/charms/lucky/`.
+2. Add the charm object to `src/data/charmsData.js`, `extension/data/charms.js`, and `desktop-test/data/charms.js`.
 
 ### Charm Schema Definition
 
@@ -153,26 +180,8 @@ To register a new charm in both the website and desktop application:
 
 ---
 
-## Release Process
-
-1. **Website Release**:
-   ```bash
-   npm run build
-   ```
-   Deploy the resulting `dist/` directory to your web hosting provider (Vercel, Netlify, or Static CDN).
-
-2. **Windows Desktop Release**:
-   ```bash
-   cd desktop-test
-   npm run build:win
-   ```
-   Upload `desktop-test/release/CharmDrop-Setup-1.0.0.exe` to your GitHub Releases or file distribution bucket matching the URL defined in `src/config/siteConfig.js`.
-
----
-
 ## Troubleshooting
 
-- **Window not visible on screen**: Use the global shortcut `Ctrl + Shift + R` or right-click the system tray icon and select **Reset Position** to bring CharmDrop to the top-right corner.
-- **Audio not playing**: Check that **Sound Effects** is checked in the system tray menu. Note that only the Fortune Bell and Lucky Cat charms produce sound.
-- **Charm selector shortcut**: Press `Ctrl + Shift + C` anytime to toggle the compact on-screen Charm Selector.
-- **Quit Application**: Press `Ctrl + Shift + Q` or select **Quit CharmDrop** from the system tray menu.
+- **Extension not showing on restricted browser pages**: Chrome and Edge prevent extension scripts from executing on special pages like `chrome://`, `edge://`, or the Web Store. Test on standard websites (e.g. `https://example.com`, `https://wikipedia.org`).
+- **Desktop window not visible**: Use `Ctrl + Shift + R` or right-click the system tray icon and select **Reset Position**.
+- **Audio not playing**: Check that **Sound Effects** is enabled. Note that only the Fortune Bell and Lucky Cat charms produce sound.

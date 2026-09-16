@@ -185,7 +185,7 @@ export function DownloadPage() {
         <div className="platform-notice-box">
           <Info size={18} className="text-indigo-600 flex-shrink-0" />
           <p>
-            <strong>Platform Availability:</strong> CharmDrop desktop app is currently available for Windows 10 & 11 (64-bit).
+            <strong>Multiple Platforms Available:</strong> CharmDrop is available as a native <strong>Windows Desktop App</strong> and as a <strong>Chromium Browser Extension</strong> (Chrome & Edge).
           </p>
         </div>
       </div>

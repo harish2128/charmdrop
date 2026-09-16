@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "CharmDrop — Interactive Screen Charms",
+  "version": "1.0.0",
+  "description": "Hang authentic lucky charms, fortune bells, and daily Nimbu Mirchi from the top of any webpage with physics and sound.",
+  "author": "CharmDrop",
+  "icons": {
+    "16": "assets/icons/charmdrop.png",
+    "48": "assets/icons/charmdrop.png",
+    "128": "assets/icons/charmdrop.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "CharmDrop Controls",
+    "default_icon": {
+      "16": "assets/icons/charmdrop.png",
+      "48": "assets/icons/charmdrop.png",
+      "128": "assets/icons/charmdrop.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/charms/lucky/*",
+        "assets/sounds/*",
+        "assets/icons/*"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ]
+}
