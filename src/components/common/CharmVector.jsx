@@ -1,5 +1,35 @@
 import React from "react";
 import nimbuMirchiImage from "../../assets/charms/lucky/nimbu-mirchi.png";
+import guardianFaceImage from "../../assets/charms/lucky/guardian-face.png";
+import evilEyeImage from "../../assets/charms/lucky/evil-eye.png";
+import luckyCatImage from "../../assets/charms/lucky/lucky-cat.png";
+import luckyBellImage from "../../assets/charms/lucky/lucky-bell.png";
+import fourLeafCloverImage from "../../assets/charms/lucky/four-leaf-clover.png";
+import darumaImage from "../../assets/charms/lucky/lucky-daruma.png";
+import luckyCloverImage from "../../assets/charms/lucky/lucky-clover.png";
+import dreamcatcherImage from "../../assets/charms/lucky/dreamcatcher.png";
+import luckyHorseshoeImage from "../../assets/charms/lucky/lucky-horseshoe.png";
+import redLuckyKnotImage from "../../assets/charms/lucky/red-lucky-knot.png";
+import yinYangImage from "../../assets/charms/lucky/yin-yang.png";
+import luckyLotusImage from "../../assets/charms/lucky/lucky-lotus.png";
+
+const CHARM_IMAGE_MAP = {
+  "nimbu-mirchi": nimbuMirchiImage,
+  "guardian-face": guardianFaceImage,
+  "evil-eye": evilEyeImage,
+  "lucky-cat": luckyCatImage,
+  "maneki-neko": luckyCatImage,
+  "lucky-bell": luckyBellImage,
+  "four-leaf-clover": fourLeafCloverImage,
+  "daruma": darumaImage,
+  "lucky-daruma": darumaImage,
+  "lucky-clover": luckyCloverImage,
+  "dreamcatcher": dreamcatcherImage,
+  "lucky-horseshoe": luckyHorseshoeImage,
+  "red-lucky-knot": redLuckyKnotImage,
+  "yin-yang": yinYangImage,
+  "lucky-lotus": luckyLotusImage,
+};
 
 export function CharmVector({ 
   iconKey, 
@@ -21,7 +51,9 @@ export function CharmVector({
         transition: "all 0.5s ease" 
       };
 
-  if (image) {
+  const resolvedImage = image || (iconKey ? CHARM_IMAGE_MAP[iconKey] : null);
+
+  if (resolvedImage) {
     return (
       <div 
         className={`real-charm-box ${className}`}
@@ -35,7 +67,7 @@ export function CharmVector({
         }}
       >
         <img
-          src={image}
+          src={resolvedImage}
           alt={iconKey || "Charm"}
           className="real-charm-image"
           draggable={false}
