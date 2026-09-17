@@ -52,8 +52,8 @@ export function HeroSection({ onOpenDownloadModal }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              Your Desktop. <br />
-              <span className="hero-headline-accent">Your Vibe.</span>
+              Your desktop. <br />
+              <span className="hero-headline-accent">Your charm.</span>
             </motion.h1>
 
             {/* Supporting Text */}
@@ -63,25 +63,24 @@ export function HeroSection({ onOpenDownloadModal }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              Bring personality, motion and a little luck to your Windows desktop.
+              Bring a little charm to your screen.
             </motion.p>
 
-            {/* Buttons: Download for Windows & Explore Charms */}
+            {/* Buttons: Get CharmDrop & Explore Charms */}
             <motion.div
               className="hero-buttons-row"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <a
-                href={siteConfig.download.windows.url}
-                download={siteConfig.download.windows.filename}
+              <Link
+                to="/download"
                 className="btn-royal-download"
-                aria-label="Download CharmDrop for Windows"
+                aria-label="Get CharmDrop"
               >
                 <Download size={19} />
-                <span>Download for Windows</span>
-              </a>
+                <span>Get CharmDrop</span>
+              </Link>
 
               <Link to="/charms" className="btn-clean-explore">
                 <span>Explore Charms</span>
@@ -148,7 +147,7 @@ export function HeroSection({ onOpenDownloadModal }) {
                 </div>
                 <div className="mockup-header-status">
                   <span className="status-live-indicator" />
-                  <span>144Hz Physics Active</span>
+                  <span>Interactive Charm Preview</span>
                 </div>
               </div>
 

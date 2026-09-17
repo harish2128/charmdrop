@@ -104,7 +104,7 @@ export const charmsData = [
     },
     sound: {
       type: "cat",
-      src: "assets/sounds/dragon-studio-cartoon-cat-meow-487661.mp3",
+      src: "/assets/sounds/dragon-studio-cartoon-cat-meow-487661.mp3",
       volume: 0.40,
       cooldown: 3500
     }
@@ -151,7 +151,7 @@ export const charmsData = [
     },
     sound: {
       type: "bell",
-      src: "assets/sounds/universfield-single-church-bell-2-352062.mp3",
+      src: "/assets/sounds/universfield-single-church-bell-2-352062.mp3",
       volume: 0.40,
       cooldown: 3800
     }
@@ -419,26 +419,20 @@ export const communitySetups = [
 export const howItWorksSteps = [
   {
     step: "01",
-    title: "Download CharmDrop",
-    description: "Grab the lightweight Windows installer for Windows 10 & 11. Zero bloat, zero background CPU drain.",
-    badge: "Under 15MB"
+    title: "Pick Your Charm",
+    description: "Choose your favourite from the CharmDrop collection.",
+    badge: "Step 1"
   },
   {
     step: "02",
-    title: "Install in Seconds",
-    description: "Run the one-click installer. CharmDrop rests silently in your Windows system tray.",
-    badge: "No Sign-up Needed"
+    title: "Get CharmDrop",
+    description: "Install CharmDrop once on your Windows laptop.",
+    badge: "Step 2"
   },
   {
     step: "03",
-    title: "Choose Your Charm",
-    description: "Browse authentic Lucky talismans like Nimbu Mirchi, Fortune Bell, Lucky Cat, Daruma, and Evil Eye.",
-    badge: "Instant Preview"
-  },
-  {
-    step: "04",
-    title: "Let It Hang & Swing",
-    description: "Watch it hang from the top of your screen with smooth pendulum physics. Drag it or let it sway.",
-    badge: "Always on Top"
+    title: "Keep It With You",
+    description: "Your charm stays on screen while you work, browse or create.",
+    badge: "Step 3"
   }
 ];

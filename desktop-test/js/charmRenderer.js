@@ -233,6 +233,14 @@ export class CharmRenderer {
   setupTrayIPC() {
     if (!window.electronAPI) return;
 
+    if (window.electronAPI.getInitialCharmId) {
+      window.electronAPI.getInitialCharmId().then((initialId) => {
+        if (initialId && initialId !== this.currentCharm?.id) {
+          this.loadCharm(initialId, false);
+        }
+      }).catch(() => {});
+    }
+
     if (window.electronAPI.onSwitchCharm) {
       window.electronAPI.onSwitchCharm((charmId) => {
         this.loadCharm(charmId, true);

@@ -8,7 +8,8 @@ import {
   ChevronDown, 
   MessageSquare, 
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Globe
 } from "lucide-react";
 import { Instagram } from "../components/common/InstagramIcon";
 import { SectionTitle } from "../components/common/SectionTitle";
@@ -163,14 +164,30 @@ export function Contact() {
           <div className="contact-info-col">
             <div className="direct-channels-box">
               <h4>Direct Channels</h4>
-              
-              <a href={`mailto:${siteConfig.email}`} className="channel-link-item">
+
+              <a
+                href={siteConfig.companyWebsiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="channel-link-item"
+              >
+                <div className="channel-icon-pill">
+                  <Globe size={18} />
+                </div>
+                <div>
+                  <strong>Company Website</strong>
+                  <p>{siteConfig.companyName}</p>
+                </div>
+                <ExternalLink size={14} className="ml-auto text-slate-400" />
+              </a>
+
+              <a href={`mailto:${siteConfig.companyEmail}`} className="channel-link-item">
                 <div className="channel-icon-pill">
                   <Mail size={18} />
                 </div>
                 <div>
                   <strong>Email Support</strong>
-                  <p>{siteConfig.email}</p>
+                  <p>{siteConfig.companyEmail}</p>
                 </div>
               </a>
 

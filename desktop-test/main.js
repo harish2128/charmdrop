@@ -2,6 +2,15 @@ const { app, BrowserWindow, screen, ipcMain, globalShortcut, Tray, Menu, nativeI
 const path = require('path');
 const fs = require('fs');
 
+// Register custom protocol handler for 'charmdrop://'
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('charmdrop', process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('charmdrop');
+}
+
 let mainWindow = null;
 let tray = null;
 
@@ -39,6 +48,102 @@ let availableCharms = [
   { id: 'yin-yang', name: 'Yin Yang', category: 'Lucky' },
   { id: 'lucky-lotus', name: 'Lucky Lotus', category: 'Lucky' }
 ];
+
+const APPROVED_CHARM_IDS = new Set(availableCharms.map((c) => c.id));
+
+/**
+ * Safely parses and strictly validates charmdrop:// protocol URLs.
+ * Accepted format: charmdrop://charm/<approvedCharmId>
+ * Rejects any arbitrary commands, file paths, script injection or unapproved IDs.
+ * @param {string} urlStr
+ * @returns {string|null} Validated charmId or null
+ */
+function extractCharmIdFromProtocolUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return null;
+  let trimmed = urlStr.trim().replace(/^["']|["']$/g, '').trim();
+  if (!trimmed.toLowerCase().startsWith('charmdrop:')) return null;
+
+  try {
+    if (!trimmed.toLowerCase().startsWith('charmdrop://')) {
+      trimmed = trimmed.replace(/^charmdrop:(\/\/)?/i, 'charmdrop://');
+    }
+    const parsed = new URL(trimmed);
+    let candidate = '';
+    if (parsed.hostname === 'charm') {
+      candidate = parsed.pathname.replace(/^\/+|\/+$/g, '');
+    } else if (parsed.hostname && APPROVED_CHARM_IDS.has(parsed.hostname.toLowerCase())) {
+      candidate = parsed.hostname;
+    } else {
+      candidate = parsed.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
+    }
+    candidate = candidate.toLowerCase().trim();
+    if (APPROVED_CHARM_IDS.has(candidate)) {
+      return candidate;
+    }
+  } catch (err) {
+    const match = trimmed.match(/^charmdrop:\/\/(?:charm\/)?([a-z0-9-]+)\/?$/i);
+    if (match) {
+      const candidate = match[1].toLowerCase().trim();
+      if (APPROVED_CHARM_IDS.has(candidate)) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Finds deep link URL argument from process.argv or second-instance commandLine
+ * @param {string[]} argv
+ * @returns {string|null} Validated charmId or null
+ */
+function findProtocolCharmInArgv(argv) {
+  if (!Array.isArray(argv)) return null;
+  for (const arg of argv) {
+    if (typeof arg === 'string') {
+      const trimmed = arg.trim().replace(/^["']|["']$/g, '').trim();
+      if (trimmed.toLowerCase().startsWith('charmdrop:')) {
+        const validId = extractCharmIdFromProtocolUrl(trimmed);
+        if (validId) return validId;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Applies a validated deep link charm:
+ * 1. Validates charm ID against canonical dataset
+ * 2. Sets active charm in settings
+ * 3. Preserves current desktop position
+ * 4. Resets rope safely in renderer
+ * 5. Renders selected charm
+ * 6. Persists selected charm to disk
+ * @param {string} charmId
+ */
+function applyDeepLinkedCharm(charmId) {
+  if (!charmId || !APPROVED_CHARM_IDS.has(charmId)) return;
+
+  const charmObj = availableCharms.find((c) => c.id === charmId);
+  const charmName = charmObj ? charmObj.name : charmId;
+
+  saveSettings({
+    selectedCharmId: charmId,
+    selectedCharmName: charmName,
+    charmVisible: true
+  });
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    sendToRenderer('switch-charm', charmId);
+    buildTrayMenu();
+  }
+}
 
 // Canvas dimensions
 const WINDOW_WIDTH = 340;
@@ -761,29 +866,67 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
+ipcMain.handle('get-initial-charm-id', () => {
+  return appSettings.selectedCharmId || 'nimbu-mirchi';
+});
+
 // Enforce single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (!mainWindow.isVisible()) {
-        mainWindow.show();
+  // Warm start deep link handler: existing instance receives command line from second instance
+  app.on('second-instance', (event, commandLine) => {
+    const deepLinkedCharmId = findProtocolCharmInArgv(commandLine);
+    if (deepLinkedCharmId) {
+      applyDeepLinkedCharm(deepLinkedCharmId);
+    } else {
+      if (mainWindow) {
+        if (!mainWindow.isVisible()) {
+          mainWindow.show();
+        }
+        if (mainWindow.isMinimized()) {
+          mainWindow.restore();
+        }
+        mainWindow.focus();
+        sendToRenderer('toggle-charm-selector');
       }
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.focus();
-      sendToRenderer('toggle-charm-selector');
+    }
+  });
+
+  // Cross-platform open-url handler
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    const validId = extractCharmIdFromProtocolUrl(url);
+    if (validId) {
+      applyDeepLinkedCharm(validId);
     }
   });
 
   app.whenReady().then(() => {
+    // Cold start deep link handler: inspect process.argv on initial launch
+    const coldStartCharmId = findProtocolCharmInArgv(process.argv);
+    if (coldStartCharmId) {
+      const charmObj = availableCharms.find((c) => c.id === coldStartCharmId);
+      appSettings.selectedCharmId = coldStartCharmId;
+      if (charmObj) appSettings.selectedCharmName = charmObj.name;
+      saveSettings({
+        selectedCharmId: coldStartCharmId,
+        selectedCharmName: appSettings.selectedCharmName,
+        charmVisible: true
+      });
+    }
+
     createWindow();
     createTray();
     registerShortcuts();
+
+    if (coldStartCharmId && mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        applyDeepLinkedCharm(coldStartCharmId);
+      });
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

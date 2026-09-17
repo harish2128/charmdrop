@@ -250,7 +250,7 @@ export function WindowsPreviewSection() {
               </div>
               <div>
                 <h4>Instant Charm Swapping</h4>
-                <p>Swap between the Lucky Cat, Twin-Scroll Turbo, or Pixel Sword in two clicks right from your tray.</p>
+                <p>Swap between the Fortune Bell, Lucky Cat, Daruma, or Nimbu Mirchi in two clicks right from your tray.</p>
               </div>
             </div>
 
@@ -259,8 +259,8 @@ export function WindowsPreviewSection() {
                 <Info size={20} />
               </div>
               <div>
-                <h4>Seamless Electron / Native Architecture</h4>
-                <p>Built to interface with lightweight Windows transparent rendering with low memory impact.</p>
+                <h4>Ultra-Lightweight Windows Engine</h4>
+                <p>Engineered for smooth transparent rendering across your desktop with near-zero memory impact.</p>
               </div>
             </div>
           </div>

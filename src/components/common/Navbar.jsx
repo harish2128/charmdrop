@@ -80,8 +80,8 @@ export function Navbar({ onOpenDownloadModal }) {
               target="_blank"
               rel="noopener noreferrer"
               className="social-icon-btn"
-              title="Follow @charmdrop.app on Instagram"
-              aria-label="CharmDrop on Instagram"
+              title={`Follow ${siteConfig.instagramHandle} on Instagram`}
+              aria-label={`Follow ${siteConfig.instagramHandle} on Instagram`}
             >
               <Instagram size={18} />
             </a>

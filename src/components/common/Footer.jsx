@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Monitor, Heart, ArrowUpRight } from "lucide-react";
+import { Monitor, Heart, ArrowUpRight, Globe, Mail } from "lucide-react";
 import { Instagram } from "./InstagramIcon";
 import { Logo } from "./Logo";
 import { siteConfig } from "../../config/siteConfig";
@@ -28,17 +28,53 @@ export function Footer() {
             </div>
 
             <div className="footer-social-links">
-              <a
-                href={siteConfig.instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="footer-social-pill"
-                aria-label="CharmDrop Instagram"
-              >
-                <Instagram size={16} />
-                <span>{siteConfig.instagramHandle}</span>
-                <ArrowUpRight size={13} />
-              </a>
+              <div className="footer-developer-credit">
+                <span className="dev-credit-label">Developed by</span>
+                <a
+                  href={siteConfig.companyWebsiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="dev-company-link"
+                >
+                  <strong>{siteConfig.companyName}</strong>
+                  <ArrowUpRight size={13} />
+                </a>
+              </div>
+
+              <div className="footer-company-links-list">
+                <a
+                  href={siteConfig.companyWebsiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="footer-social-pill"
+                  aria-label="Tetrionyx Technologies Website"
+                >
+                  <Globe size={14} />
+                  <span>Website</span>
+                  <ArrowUpRight size={12} />
+                </a>
+
+                <a
+                  href={siteConfig.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="footer-social-pill"
+                  aria-label="Tetrionyx Technologies Instagram"
+                >
+                  <Instagram size={14} />
+                  <span>{siteConfig.instagramHandle}</span>
+                  <ArrowUpRight size={12} />
+                </a>
+
+                <a
+                  href={`mailto:${siteConfig.companyEmail}`}
+                  className="footer-social-pill"
+                  aria-label="Email Tetrionyx Technologies"
+                >
+                  <Mail size={14} />
+                  <span>{siteConfig.companyEmail}</span>
+                </a>
+              </div>
             </div>
           </div>
 

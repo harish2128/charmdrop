@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Eye, Clock, Sparkles, Flame } from "lucide-react";
+import { Eye, Clock, Sparkles, Flame, Check, Volume2, ArrowRight } from "lucide-react";
 import { CharmVector } from "../common/CharmVector";
 import { playCharmSound } from "../../utils/soundEffects";
 
@@ -10,8 +11,10 @@ export function CharmCard({
   className = ""
 }) {
   const [isHovered, setIsHovered] = useState(false);
+  const navigate = useNavigate();
 
   const {
+    id,
     name,
     category,
     description,
@@ -29,6 +32,19 @@ export function CharmCard({
     setIsHovered(true);
     playCharmSound(charm);
   };
+
+  const handleUseCharm = (e) => {
+    e.stopPropagation();
+    try {
+      localStorage.setItem("selectedCharmId", id);
+    } catch (err) {
+      // storage quota / privacy mode fallback
+    }
+    navigate(`/download?charm=${id}`);
+  };
+
+  const hasBellSound = id === "lucky-bell";
+  const hasCatSound = id === "lucky-cat";
 
   return (
     <motion.div
@@ -49,13 +65,25 @@ export function CharmCard({
             <span>Daily</span>
           </span>
         )}
+        {hasBellSound && (
+          <span className="card-sound-pill" title="Interactive bell sound">
+            <Volume2 size={12} />
+            <span>Bell Sound</span>
+          </span>
+        )}
+        {hasCatSound && (
+          <span className="card-sound-pill" title="Interactive cat sound">
+            <Volume2 size={12} />
+            <span>Cat Sound</span>
+          </span>
+        )}
         {isNew && !isDaily && (
           <span className="card-new-pill">
             <Sparkles size={12} />
             <span>New Drop</span>
           </span>
         )}
-        {isPopular && !isNew && !isDaily && (
+        {isPopular && !isNew && !isDaily && !hasBellSound && !hasCatSound && (
           <span className="card-pop-pill">
             <Flame size={12} />
             <span>Trending</span>
@@ -107,15 +135,23 @@ export function CharmCard({
 
         <p className="card-charm-desc">{description}</p>
 
-        {/* Action Button */}
-        <div className="card-action-footer">
+        {/* Action Buttons: Preview Charm + Use This Charm */}
+        <div className="card-action-footer card-action-dual-row">
           <button
             onClick={() => onPreviewClick(charm)}
             className="btn-card-preview"
             aria-label={`Preview ${name}`}
           >
-            <Eye size={16} />
+            <Eye size={15} />
             <span>Preview Charm</span>
+          </button>
+          <button
+            onClick={handleUseCharm}
+            className="btn-card-use"
+            aria-label={`Use ${name}`}
+          >
+            <span>Use This Charm</span>
+            <ArrowRight size={14} />
           </button>
         </div>
       </div>

@@ -4,14 +4,14 @@ export const siteConfig = {
   heroSupportText: "Bring personality, motion and a little luck to your Windows desktop.",
   supportedOS: "Windows 10 & 11",
   pricing: "Completely Free",
-  version: "1.0.0",
+  version: "1.0.1",
   download: {
     windows: {
-      version: "1.0.0",
-      filename: "CharmDrop-Setup-1.0.0.exe",
+      version: "1.0.1",
+      filename: "CharmDrop-Setup-1.0.1.exe",
       fileSize: "88.1 MB",
-      url: "https://github.com/charmdrop/charmdrop/releases/download/v1.0.0/CharmDrop-Setup-1.0.0.exe",
-      releaseTag: "v1.0.0",
+      url: "https://github.com/charmdrop/charmdrop/releases/download/v1.0.1/CharmDrop-Setup-1.0.1.exe",
+      releaseTag: "v1.0.1",
       architecture: "64-bit",
       supportedOS: "Windows 10 & Windows 11"
     },
@@ -22,10 +22,13 @@ export const siteConfig = {
       supportedBrowsers: "Chrome, Edge, Brave, Opera (Chromium)"
     }
   },
-  instagramUrl: "https://instagram.com/charmdrop.app",
-  instagramHandle: "@charmdrop.app",
-  email: "hello@charmdrop.app",
-  supportEmail: "support@charmdrop.app",
+  companyName: "Tetrionyx Technologies",
+  companyEmail: "tetrionyx@gmail.com",
+  companyWebsiteUrl: "https://tetroinyx.netlify.app",
+  instagramUrl: "https://www.instagram.com/tetrionyx_technologies?stkn=MXZsNnNnMnJwdHJrbw==",
+  instagramHandle: "@tetrionyx_technologies",
+  email: "tetrionyx@gmail.com",
+  supportEmail: "tetrionyx@gmail.com",
   year: 2026,
   githubUrl: "https://github.com/charmdrop/charmdrop",
   releaseDate: "March 2026",

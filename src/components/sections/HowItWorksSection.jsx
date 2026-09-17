@@ -1,28 +1,28 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Download, MonitorCheck, Palette, PlayCircle, Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, Heart, Download, Monitor } from "lucide-react";
 import { SectionTitle } from "../common/SectionTitle";
 import { howItWorksSteps } from "../../data/charmsData";
 
 export function HowItWorksSection({ onOpenDownloadModal }) {
-  const stepIcons = [Download, MonitorCheck, Palette, PlayCircle];
+  const stepIcons = [Heart, Download, Monitor];
 
   return (
     <section className="how-it-works-section" id="how-it-works">
       <div className="section-container">
         <SectionTitle
-          badge="Quick & Painless"
+          badge="Simple 3-Step Setup"
           badgeIcon={Sparkles}
           title="From download to desktop"
-          highlightText="in under a minute."
-          subtitle="No complex configuration or heavy dependencies. Install CharmDrop, pick your hanging vibe, and watch your screen come alive."
+          highlightText="in three easy steps."
+          subtitle="Works across your Windows desktop — not just inside your browser."
           align="center"
         />
 
         <div className="steps-cards-grid">
           {howItWorksSteps.map((stepItem, index) => {
-            const Icon = stepIcons[index];
+            const Icon = stepIcons[index] || Sparkles;
             return (
               <motion.div
                 key={stepItem.step}
@@ -56,10 +56,13 @@ export function HowItWorksSection({ onOpenDownloadModal }) {
           })}
         </div>
 
-        {/* Action Prompt */}
+        {/* Small Supporting Text & Action Prompt */}
         <div className="steps-bottom-action">
+          <p className="steps-support-text" style={{ fontSize: "0.95rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+            Works across your Windows desktop — not just inside your browser.
+          </p>
           <Link to="/download" className="btn-start-setup">
-            <span>Ready? Get CharmDrop for Windows</span>
+            <span>Get CharmDrop for Windows</span>
             <ArrowRight size={17} />
           </Link>
         </div>

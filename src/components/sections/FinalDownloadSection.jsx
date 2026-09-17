@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Download, Monitor, Sparkles, ShieldCheck, Zap, ArrowRight } from "lucide-react";
 import { HangingCharm } from "../common/HangingCharm";
@@ -42,16 +43,15 @@ export function FinalDownloadSection({ onOpenDownloadModal }) {
             </p>
 
             <div className="cta-button-group">
-              <a
-                href={siteConfig.download.windows.url}
-                download={siteConfig.download.windows.filename}
+              <Link
+                to="/download"
                 className="btn-cta-download"
-                aria-label="Download CharmDrop for Windows"
+                aria-label="Get CharmDrop for Windows"
               >
                 <Download size={20} />
-                <span>Download for Windows</span>
+                <span>Get CharmDrop for Windows</span>
                 <ArrowRight size={18} />
-              </a>
+              </Link>
             </div>
 
             {/* Sub-label indicators */}

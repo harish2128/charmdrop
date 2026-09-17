@@ -1,7 +1,7 @@
 {
   "name": "charmdrop",
   "productName": "CharmDrop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A little charm for your screen.",
   "main": "main.js",
   "author": "CharmDrop",
@@ -51,9 +51,18 @@
       ],
       "icon": "assets/icons/charmdrop.ico"
     },
+    "protocols": [
+      {
+        "name": "CharmDrop Protocol",
+        "schemes": [
+          "charmdrop"
+        ]
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "include": "installer.nsh",
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "CharmDrop",

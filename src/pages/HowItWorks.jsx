@@ -37,14 +37,14 @@ export function HowItWorks({ onOpenDownloadModal }) {
     {
       num: "03",
       title: "Pick & Position Your Charm",
-      desc: "Choose from Lucky Talismans, Racing Turbos, Retro Pixels, or Original Heroes. Click and drag the charm to your ideal screen location.",
-      details: ["Anchor to top bezel or any corner", "Supports ultrawide & 4K displays", "Adjust swing elasticity"]
+      desc: "Choose from authentic Lucky Talismans like Nimbu Mirchi, Fortune Bell, Lucky Cat, Daruma, or Evil Eye. Click and drag the charm to your ideal screen location.",
+      details: ["Anchor to top screen bezel", "Supports ultrawide & 4K displays", "Smooth natural physics recoil"]
     },
     {
       num: "04",
       title: "Enjoy the Daily Ritual",
       desc: "Watch your charm swing naturally as you switch between apps, code, or game. If you choose Nimbu Mirchi, replace it each morning for good fortune.",
-      details: ["Always on top overlay", "Sound chime on release", "Daily 24-hour refresh cycle"]
+      details: ["Always on top overlay", "Interactive chime and meow audio", "Daily 24-hour refresh cycle"]
     }
   ];
 
@@ -79,14 +79,14 @@ export function HowItWorks({ onOpenDownloadModal }) {
             <ul className="split-perks-list">
               <li><CheckCircle2 size={16} className="text-emerald-500" /> Reacts dynamically to cursor flick velocity</li>
               <li><CheckCircle2 size={16} className="text-emerald-500" /> Decays smoothly back to natural vertical rest</li>
-              <li><CheckCircle2 size={16} className="text-emerald-500" /> Renders at up to 144Hz with low GPU overhead</li>
+              <li><CheckCircle2 size={16} className="text-emerald-500" /> Renders smoothly with low CPU/GPU overhead</li>
             </ul>
           </div>
 
           <div className="split-visual-col">
             <div className="physics-demo-box">
               <HangingCharm
-                iconKey="turbo"
+                iconKey="nimbu-mirchi"
                 size={100}
                 stringLength={120}
                 interactive={true}

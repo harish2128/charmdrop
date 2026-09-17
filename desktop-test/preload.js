@@ -57,5 +57,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getAppVersion: () => {
     return ipcRenderer.invoke('get-app-version');
+  },
+  getInitialCharmId: () => {
+    return ipcRenderer.invoke('get-initial-charm-id');
   }
 });

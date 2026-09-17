@@ -17,7 +17,7 @@ import { siteConfig } from "../../config/siteConfig";
 
 export function FloatingDemoSection() {
   const [activeTab, setActiveTab] = useState("browser"); // "browser" or "ide" or "gaming"
-  const [selectedCharm, setSelectedCharm] = useState("turbo");
+  const [selectedCharm, setSelectedCharm] = useState("nimbu-mirchi");
 
   const demoEnvironments = {
     browser: {
@@ -144,7 +144,7 @@ export function FloatingDemoSection() {
             {activeTab === "browser" && (
               <div className="sim-app-browser">
                 <div className="sim-browser-bar">
-                  <div className="sim-address-box">https://charmdrop.app/showcase</div>
+                  <div className="sim-address-box">https://tetroinyx.netlify.app/charmdrop</div>
                 </div>
                 <div className="sim-content-cards">
                   <div className="sim-skeleton-card card-lg" />
@@ -161,7 +161,7 @@ export function FloatingDemoSection() {
                 <div className="sim-code-line"><span className="c-kw">import</span> {"{ HangingCharm }"} <span className="c-kw">from</span> <span className="c-str">'charmdrop'</span>;</div>
                 <div className="sim-code-line"><span className="c-com">// Your hanging talisman stays anchored above all code</span></div>
                 <div className="sim-code-line"><span className="c-fn">export default function</span> <span className="c-name">App</span>() {"{"}</div>
-                <div className="sim-code-line pl-4"><span className="c-kw">return</span> &lt;<span className="c-tag">CharmDropWindow</span> <span className="c-attr">vibe</span>=<span className="c-str">"turbo"</span> /&gt;;</div>
+                <div className="sim-code-line pl-4"><span className="c-kw">return</span> &lt;<span className="c-tag">CharmDropWindow</span> <span className="c-attr">vibe</span>=<span className="c-str">"nimbu-mirchi"</span> /&gt;;</div>
                 <div className="sim-code-line">{"}"}</div>
               </div>
             )}
