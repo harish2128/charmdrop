@@ -10,7 +10,7 @@ export const siteConfig = {
       version: "1.0.1",
       filename: "CharmDrop-Setup-1.0.1.exe",
       fileSize: "88.1 MB",
-      url: "https://github.com/charmdrop/charmdrop/releases/download/v1.0.1/CharmDrop-Setup-1.0.1.exe",
+      url: "https://github.com/harish2128/charmdrop/releases/download/v1.0.1/CharmDrop-Setup-1.0.1.exe",
       releaseTag: "v1.0.1",
       architecture: "64-bit",
       supportedOS: "Windows 10 & Windows 11"
@@ -30,7 +30,7 @@ export const siteConfig = {
   email: "tetrionyx@gmail.com",
   supportEmail: "tetrionyx@gmail.com",
   year: 2026,
-  githubUrl: "https://github.com/charmdrop/charmdrop",
+  githubUrl: "https://github.com/harish2128/charmdrop",
   releaseDate: "March 2026",
   features: {
     interactivePhysics: true,
