@@ -10,6 +10,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveWindowPosition: () => {
     ipcRenderer.send('save-window-position');
   },
+  moveSelectorWindowBy: (deltaX, deltaY) => {
+    ipcRenderer.send('move-selector-window-by', { deltaX, deltaY });
+  },
+  saveSelectorPosition: () => {
+    ipcRenderer.send('save-selector-position');
+  },
+  closeSelectorWindow: () => {
+    ipcRenderer.send('close-selector-window');
+  },
+  switchCharm: (charmId) => {
+    ipcRenderer.send('switch-charm-from-selector', charmId);
+  },
+  hangNewNimbu: () => {
+    ipcRenderer.send('hang-new-nimbu-request');
+  },
+  simulateNextDay: () => {
+    ipcRenderer.send('simulate-next-day-request');
+  },
   resetPosition: () => {
     ipcRenderer.send('reset-position');
   },

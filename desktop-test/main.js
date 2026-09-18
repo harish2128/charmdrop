@@ -12,6 +12,8 @@ if (process.defaultApp) {
 }
 
 let mainWindow = null;
+let selectorWindow = null;
+let aboutWindow = null;
 let tray = null;
 
 // Settings configuration file in Electron's safe userData directory
@@ -22,6 +24,7 @@ const DEFAULT_CONFIG = {
   selectedCharmName: 'Nimbu Mirchi',
   charmVisible: true,
   lastWindowPosition: null, // { x, y }
+  lastSelectorPosition: null, // { x, y }
   positionMode: 'top-right', // 'top-left' | 'top-center' | 'top-right' | 'custom'
   launchAtStartup: false,
   soundEffectsEnabled: true
@@ -53,10 +56,6 @@ const APPROVED_CHARM_IDS = new Set(availableCharms.map((c) => c.id));
 
 /**
  * Safely parses and strictly validates charmdrop:// protocol URLs.
- * Accepted format: charmdrop://charm/<approvedCharmId>
- * Rejects any arbitrary commands, file paths, script injection or unapproved IDs.
- * @param {string} urlStr
- * @returns {string|null} Validated charmId or null
  */
 function extractCharmIdFromProtocolUrl(urlStr) {
   if (!urlStr || typeof urlStr !== 'string') return null;
@@ -94,8 +93,6 @@ function extractCharmIdFromProtocolUrl(urlStr) {
 
 /**
  * Finds deep link URL argument from process.argv or second-instance commandLine
- * @param {string[]} argv
- * @returns {string|null} Validated charmId or null
  */
 function findProtocolCharmInArgv(argv) {
   if (!Array.isArray(argv)) return null;
@@ -112,14 +109,7 @@ function findProtocolCharmInArgv(argv) {
 }
 
 /**
- * Applies a validated deep link charm:
- * 1. Validates charm ID against canonical dataset
- * 2. Sets active charm in settings
- * 3. Preserves current desktop position
- * 4. Resets rope safely in renderer
- * 5. Renders selected charm
- * 6. Persists selected charm to disk
- * @param {string} charmId
+ * Applies a validated deep link charm
  */
 function applyDeepLinkedCharm(charmId) {
   if (!charmId || !APPROVED_CHARM_IDS.has(charmId)) return;
@@ -140,14 +130,43 @@ function applyDeepLinkedCharm(charmId) {
     if (mainWindow.isMinimized()) {
       mainWindow.restore();
     }
-    sendToRenderer('switch-charm', charmId);
-    buildTrayMenu();
+    mainWindow.webContents.send('switch-charm', charmId);
   }
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    selectorWindow.webContents.send('switch-charm', charmId);
+  }
+  buildTrayMenu();
 }
 
-// Canvas dimensions
+/**
+ * Applies a charm selected from UI / Tray
+ */
+function applySelectedCharm(charmId) {
+  if (!charmId || !APPROVED_CHARM_IDS.has(charmId)) return;
+  const charmObj = availableCharms.find((c) => c.id === charmId);
+  const charmName = charmObj ? charmObj.name : charmId;
+
+  appSettings.selectedCharmId = charmId;
+  appSettings.selectedCharmName = charmName;
+  saveSettings({
+    selectedCharmId: charmId,
+    selectedCharmName: charmName
+  });
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('switch-charm', charmId);
+  }
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    selectorWindow.webContents.send('switch-charm', charmId);
+  }
+  buildTrayMenu();
+}
+
+// Window Dimensions
 const WINDOW_WIDTH = 340;
 const WINDOW_HEIGHT = 440;
+const SELECTOR_WIDTH = 270;
+const SELECTOR_HEIGHT = 440;
 
 /**
  * Load persistent settings from disk
@@ -177,7 +196,7 @@ function saveSettings(updates = {}) {
 }
 
 /**
- * Gets the current active display where the window is located
+ * Gets the current active display where the charm window is located
  */
 function getCurrentDisplay() {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -200,8 +219,6 @@ function normalizePreset(preset) {
 
 /**
  * Calculates preset position coordinates dynamically based on display workArea
- * @param {'top-left' | 'top-center' | 'top-right'} preset
- * @param {Electron.Display} [targetDisplay]
  */
 function calculatePresetPosition(preset, targetDisplay = null) {
   const display = targetDisplay || getCurrentDisplay();
@@ -226,15 +243,12 @@ function calculatePresetPosition(preset, targetDisplay = null) {
   return { x, y };
 }
 
-/**
- * Default upper-right position on the primary display
- */
 function getDefaultTopRightPosition() {
   return calculatePresetPosition('top-right', screen.getPrimaryDisplay());
 }
 
 /**
- * Validates saved position against current active displays (handles monitor disconnects & resolution changes)
+ * Validates saved charm position against current active displays
  */
 function getValidatedPosition(savedPos) {
   if (!savedPos || typeof savedPos.x !== 'number' || typeof savedPos.y !== 'number') {
@@ -259,11 +273,47 @@ function getValidatedPosition(savedPos) {
   return getDefaultTopRightPosition();
 }
 
+/**
+ * Validates saved selector card position against current active displays
+ */
+function getValidatedSelectorPosition(savedPos) {
+  if (!savedPos || typeof savedPos.x !== 'number' || typeof savedPos.y !== 'number') {
+    const primary = screen.getPrimaryDisplay();
+    const wa = primary.workArea;
+    return {
+      x: Math.round(wa.x + wa.width - SELECTOR_WIDTH - 30),
+      y: Math.round(wa.y + 70)
+    };
+  }
+
+  const displays = screen.getAllDisplays();
+  const isInside = displays.some((d) => {
+    const wa = d.workArea;
+    return (
+      savedPos.x >= wa.x - 50 &&
+      savedPos.x <= wa.x + wa.width - 100 &&
+      savedPos.y >= wa.y &&
+      savedPos.y <= wa.y + wa.height - 100
+    );
+  });
+
+  if (isInside) {
+    return { x: Math.round(savedPos.x), y: Math.round(savedPos.y) };
+  }
+
+  const primary = screen.getPrimaryDisplay();
+  const wa = primary.workArea;
+  return {
+    x: Math.round(wa.x + wa.width - SELECTOR_WIDTH - 30),
+    y: Math.round(wa.y + 70)
+  };
+}
+
 let presetAnimationTimer = null;
 
 /**
- * Smoothly transitions the window horizontally to a preset position over ~220ms
- * @param {'top-left' | 'top-center' | 'top-right'} presetName
+ * Smoothly transitions the charm window horizontally to a preset position over ~220ms
+ * Leaves the selector card window completely stationary at its user-chosen location
  */
 function setPositionPreset(presetName) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -285,6 +335,11 @@ function setPositionPreset(presetName) {
   });
   buildTrayMenu();
 
+  // Broadcast to selector window immediately
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    selectorWindow.webContents.send('position-preset-applied', { preset: normalizedPreset, direction: 0, x: targetX, y: targetY });
+  }
+
   if (startX === targetX && startY === targetY) {
     sendToRenderer('position-preset-applied', { preset: normalizedPreset, direction: 0, x: targetX, y: targetY });
     return;
@@ -296,7 +351,6 @@ function setPositionPreset(presetName) {
   }
 
   const moveDirection = targetX > startX ? 1 : -1;
-  // Notify renderer that preset move started -> suspend proximity dance
   sendToRenderer('position-preset-moving', { preset: normalizedPreset, direction: moveDirection });
 
   const duration = 220; // 220ms smooth transition
@@ -324,7 +378,6 @@ function setPositionPreset(presetName) {
       presetAnimationTimer = null;
       mainWindow.setPosition(targetX, targetY);
 
-      // Notify renderer that movement completed -> trigger settling swing and resume idle/proximity
       sendToRenderer('position-preset-applied', {
         preset: normalizedPreset,
         direction: moveDirection,
@@ -407,6 +460,9 @@ function stopCursorPolling() {
   }
 }
 
+/**
+ * Creates the Hanging Charm Desktop Window (Window 1)
+ */
 function createWindow() {
   const initialPos = getValidatedPosition(appSettings.lastWindowPosition);
   const appIconPath = path.join(__dirname, 'assets', 'icons', 'charmdrop.ico');
@@ -441,7 +497,7 @@ function createWindow() {
 
   startCursorPolling();
 
-  // Handle transparent click-through
+  // Handle transparent click-through for hanging charm window
   ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win && !win.isDestroyed()) {
@@ -449,15 +505,14 @@ function createWindow() {
     }
   });
 
-  // Handle horizontal dragging & position persistence
+  // Handle horizontal charm dragging (Moves Charm Window ONLY)
   ipcMain.on('move-window-by', (event, deltaX) => {
     if (presetAnimationTimer) {
       clearInterval(presetAnimationTimer);
       presetAnimationTimer = null;
     }
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win && !win.isDestroyed()) {
-      const [currX, currY] = win.getPosition();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const [currX, currY] = mainWindow.getPosition();
       const currentDisplay = screen.getDisplayNearestPoint({ x: currX + (WINDOW_WIDTH / 2), y: currY });
       const wa = currentDisplay.workArea;
 
@@ -466,21 +521,19 @@ function createWindow() {
       const maxX = wa.x + wa.width - (WINDOW_WIDTH / 2) - 50;
       const newX = Math.round(Math.max(minX, Math.min(maxX, currX + deltaX)));
 
-      win.setPosition(newX, wa.y);
+      mainWindow.setPosition(newX, wa.y);
     }
   });
 
-  // Handle saving window position on drag release
-  ipcMain.on('save-window-position', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win && !win.isDestroyed()) {
-      const [currX, currY] = win.getPosition();
+  // Handle saving charm window position on drag release
+  ipcMain.on('save-window-position', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const [currX, currY] = mainWindow.getPosition();
       saveSettings({
         lastWindowPosition: { x: currX, y: currY },
         positionMode: 'custom'
       });
       buildTrayMenu();
-      sendToRenderer('position-mode-updated', 'custom');
     }
   });
 
@@ -496,7 +549,7 @@ function createWindow() {
 
   // Handle quit request
   ipcMain.on('quit-app', () => {
-    app.quit();
+    safeQuitApp();
   });
 
   // Handle sound effects toggle
@@ -560,7 +613,125 @@ function createWindow() {
   });
 }
 
-let aboutWindow = null;
+/**
+ * Creates the Select Charm Card Window (Window 2)
+ */
+function createSelectorWindow() {
+  if (selectorWindow && !selectorWindow.isDestroyed()) return;
+
+  const initialPos = getValidatedSelectorPosition(appSettings.lastSelectorPosition);
+  const appIconPath = path.join(__dirname, 'assets', 'icons', 'charmdrop.ico');
+
+  selectorWindow = new BrowserWindow({
+    width: SELECTOR_WIDTH,
+    height: SELECTOR_HEIGHT,
+    x: initialPos.x,
+    y: initialPos.y,
+    icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  selectorWindow.setAlwaysOnTop(true, 'screen-saver');
+  if (selectorWindow.setVisibleOnAllWorkspaces) {
+    selectorWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
+
+  selectorWindow.loadFile('selector.html');
+
+  selectorWindow.on('closed', () => {
+    selectorWindow = null;
+  });
+}
+
+/**
+ * Toggles the Select Charm Card Window on Ctrl+Shift+C or Tray click
+ */
+function toggleSelectorWindow() {
+  if (!selectorWindow || selectorWindow.isDestroyed()) {
+    createSelectorWindow();
+    selectorWindow.once('ready-to-show', () => {
+      selectorWindow.show();
+      selectorWindow.focus();
+    });
+    return;
+  }
+
+  if (selectorWindow.isVisible()) {
+    selectorWindow.hide();
+  } else {
+    selectorWindow.show();
+    selectorWindow.focus();
+  }
+}
+
+// Selector Card Drag & IPC Communication Handlers
+ipcMain.on('move-selector-window-by', (event, { deltaX, deltaY }) => {
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    const [currX, currY] = selectorWindow.getPosition();
+    const currentDisplay = screen.getDisplayNearestPoint({ x: currX + (SELECTOR_WIDTH / 2), y: currY + (SELECTOR_HEIGHT / 2) });
+    const wa = currentDisplay.workArea;
+
+    // Clamp selector card within display work area boundaries
+    const minX = wa.x;
+    const maxX = wa.x + wa.width - SELECTOR_WIDTH;
+    const minY = wa.y;
+    const maxY = wa.y + wa.height - 180;
+
+    const newX = Math.round(Math.max(minX, Math.min(maxX, currX + deltaX)));
+    const newY = Math.round(Math.max(minY, Math.min(maxY, currY + deltaY)));
+
+    selectorWindow.setPosition(newX, newY);
+  }
+});
+
+ipcMain.on('save-selector-position', () => {
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    const [currX, currY] = selectorWindow.getPosition();
+    saveSettings({
+      lastSelectorPosition: { x: currX, y: currY }
+    });
+  }
+});
+
+ipcMain.on('close-selector-window', () => {
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    selectorWindow.hide();
+  }
+});
+
+ipcMain.on('switch-charm-from-selector', (event, charmId) => {
+  applySelectedCharm(charmId);
+});
+
+ipcMain.on('hang-new-nimbu-request', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('hang-new-nimbu');
+  }
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    selectorWindow.webContents.send('hang-new-nimbu');
+  }
+});
+
+ipcMain.on('simulate-next-day-request', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('simulate-next-day');
+  }
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    selectorWindow.webContents.send('simulate-next-day');
+  }
+});
 
 function openAboutWindow() {
   if (aboutWindow && !aboutWindow.isDestroyed()) {
@@ -611,6 +782,14 @@ function safeQuitApp() {
       charmVisible: mainWindow.isVisible()
     });
   }
+  if (selectorWindow && !selectorWindow.isDestroyed()) {
+    const [selX, selY] = selectorWindow.getPosition();
+    saveSettings({
+      lastSelectorPosition: { x: selX, y: selY }
+    });
+    selectorWindow.destroy();
+    selectorWindow = null;
+  }
   if (presetAnimationTimer) {
     clearInterval(presetAnimationTimer);
     presetAnimationTimer = null;
@@ -636,7 +815,6 @@ function buildTrayMenu() {
   const currentId = appSettings.selectedCharmId || 'nimbu-mirchi';
   const currentPosMode = appSettings.positionMode || 'top-right';
 
-  // Group available charms into category submenus (Only include categories with available charms)
   const categories = ['Lucky'];
   const categorySubmenus = [];
 
@@ -650,67 +828,76 @@ function buildTrayMenu() {
           type: 'radio',
           checked: charm.id === currentId,
           click: () => {
-            sendToRenderer('switch-charm', charm.id);
+            applySelectedCharm(charm.id);
           }
         }))
       });
     }
   }
 
-  // Fallback flat list if categories not yet populated
-  const charmSubmenu = categorySubmenus.length > 0 ? categorySubmenus : availableCharms.map((charm) => ({
-    label: charm.name,
-    type: 'radio',
-    checked: charm.id === currentId,
-    click: () => {
-      sendToRenderer('switch-charm', charm.id);
-    }
-  }));
-
-  // Position Presets Submenu
-  const positionSubmenu = [
-    {
-      label: 'Top Left',
-      type: 'radio',
-      checked: currentPosMode === 'top-left',
-      click: () => setPositionPreset('top-left')
-    },
-    {
-      label: 'Top Center',
-      type: 'radio',
-      checked: currentPosMode === 'top-center',
-      click: () => setPositionPreset('top-center')
-    },
-    {
-      label: 'Top Right',
-      type: 'radio',
-      checked: currentPosMode === 'top-right',
-      click: () => setPositionPreset('top-right')
-    }
-  ];
-
-  // 1. Final Tray Menu Order
   const menuTemplate = [
-    { label: 'CharmDrop', enabled: false },
-    { type: 'separator' },
-    { label: `Current Charm: ${currentName}`, enabled: false },
     {
-      label: 'Change Charm',
-      submenu: charmSubmenu
-    },
-    {
-      label: 'Position',
-      submenu: positionSubmenu
+      label: `CharmDrop — ${currentName}`,
+      enabled: false
     },
     { type: 'separator' },
     {
-      label: 'Show Charm',
-      type: 'checkbox',
-      checked: isVisible,
+      label: 'Choose Charm...',
+      accelerator: 'CmdOrCtrl+Shift+C',
+      click: () => {
+        toggleSelectorWindow();
+      }
+    },
+    {
+      label: 'Lucky Charms',
+      submenu: categorySubmenus.length > 0 && categorySubmenus[0].submenu ? categorySubmenus[0].submenu : []
+    },
+    { type: 'separator' },
+    {
+      label: isVisible ? 'Hide Charm' : 'Show Charm',
+      accelerator: 'CmdOrCtrl+Shift+H',
       click: () => {
         toggleWindowVisibility();
       }
     },
+    {
+      label: 'Position Presets',
+      submenu: [
+        {
+          label: 'Top Left',
+          type: 'radio',
+          checked: currentPosMode === 'top-left',
+          click: () => {
+            setPositionPreset('top-left');
+          }
+        },
+        {
+          label: 'Top Center',
+          type: 'radio',
+          checked: currentPosMode === 'top-center',
+          click: () => {
+            setPositionPreset('top-center');
+          }
+        },
+        {
+          label: 'Top Right (Default)',
+          type: 'radio',
+          checked: currentPosMode === 'top-right',
+          click: () => {
+            setPositionPreset('top-right');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Reset to Top Right',
+          accelerator: 'CmdOrCtrl+Shift+R',
+          click: () => {
+            resetWindowPosition();
+          }
+        }
+      ]
+    },
+    { type: 'separator' },
     {
       label: 'Sound Effects',
       type: 'checkbox',
@@ -726,36 +913,10 @@ function buildTrayMenu() {
       click: (menuItem) => {
         setLaunchAtStartup(menuItem.checked);
       }
-    },
-    { type: 'separator' },
-    {
-      label: 'Reset Position',
-      click: () => {
-        resetWindowPosition();
-      }
     }
   ];
 
-  // 8. Daily Nimbu contextual menu (ONLY when Nimbu Mirchi is selected)
-  if (currentId === 'nimbu-mirchi') {
-    menuTemplate.push({ type: 'separator' });
-    menuTemplate.push({
-      label: `Nimbu Status: ${isNimbuFresh ? 'Fresh' : 'Completed'}`,
-      enabled: false
-    });
-    if (!isNimbuFresh) {
-      menuTemplate.push({
-        label: 'Hang New Nimbu Mirchi',
-        click: () => {
-          if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
-          sendToRenderer('hang-new-nimbu');
-        }
-      });
-    }
-  }
-
-  // Developer Submenu (Unpackaged / Dev Mode only, isolated from normal user items)
-  if (!app.isPackaged) {
+  if (!app.isPackaged || process.env.NODE_ENV === 'development') {
     menuTemplate.push({ type: 'separator' });
     menuTemplate.push({
       label: 'Developer Tools',
@@ -765,6 +926,9 @@ function buildTrayMenu() {
           click: () => {
             if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
             sendToRenderer('simulate-next-day');
+            if (selectorWindow && !selectorWindow.isDestroyed()) {
+              selectorWindow.webContents.send('simulate-next-day');
+            }
           }
         },
         {
@@ -809,22 +973,12 @@ function createTray() {
 
     // Single left click on tray icon toggles the compact Charm Selector
     tray.on('click', () => {
-      if (mainWindow) {
-        if (!mainWindow.isVisible()) {
-          mainWindow.show();
-        }
-        sendToRenderer('toggle-charm-selector');
-      }
+      toggleSelectorWindow();
     });
 
     // Double click also toggles selector
     tray.on('double-click', () => {
-      if (mainWindow) {
-        if (!mainWindow.isVisible()) {
-          mainWindow.show();
-        }
-        sendToRenderer('toggle-charm-selector');
-      }
+      toggleSelectorWindow();
     });
   } catch (err) {
     console.error('Tray creation error:', err);
@@ -847,12 +1001,9 @@ function registerShortcuts() {
     resetWindowPosition();
   });
 
-  // Ctrl + Shift + C -> Toggle Charm Selector Panel
+  // Ctrl + Shift + C -> Toggle Charm Selector Card
   globalShortcut.register('CommandOrControl+Shift+C', () => {
-    if (mainWindow && !mainWindow.isVisible()) {
-      mainWindow.show();
-    }
-    sendToRenderer('toggle-charm-selector');
+    toggleSelectorWindow();
   });
 }
 
@@ -865,10 +1016,6 @@ ipcMain.on('close-about-window', () => {
 
 ipcMain.on('open-about-window', () => {
   openAboutWindow();
-});
-
-ipcMain.on('set-sound-effects-enabled', (event, enabled) => {
-  setSoundEffectsEnabled(enabled);
 });
 
 ipcMain.handle('get-app-version', () => {
@@ -899,8 +1046,8 @@ if (!gotTheLock) {
           mainWindow.restore();
         }
         mainWindow.focus();
-        sendToRenderer('toggle-charm-selector');
       }
+      toggleSelectorWindow();
     }
   });
 
@@ -928,6 +1075,7 @@ if (!gotTheLock) {
     }
 
     createWindow();
+    createSelectorWindow();
     createTray();
     registerShortcuts();
 
@@ -940,6 +1088,7 @@ if (!gotTheLock) {
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
+        createSelectorWindow();
       }
     });
   });
@@ -950,6 +1099,12 @@ if (!gotTheLock) {
       saveSettings({
         lastWindowPosition: { x: currX, y: currY },
         charmVisible: mainWindow.isVisible()
+      });
+    }
+    if (selectorWindow && !selectorWindow.isDestroyed()) {
+      const [selX, selY] = selectorWindow.getPosition();
+      saveSettings({
+        lastSelectorPosition: { x: selX, y: selY }
       });
     }
     if (presetAnimationTimer) {

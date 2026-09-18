@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CharmDrop Selector</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent !important;
+      user-select: none;
+      -webkit-user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .selector-standalone-card {
+      width: 254px;
+      max-height: 420px;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    .selector-drag-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .selector-drag-header:active,
+    .selector-drag-header.is-dragging {
+      cursor: grabbing !important;
+    }
+
+    .selector-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .selector-drag-grip {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-right: 2px;
+      opacity: 0.45;
+    }
+
+    .selector-drag-grip span {
+      display: block;
+      width: 12px;
+      height: 1.5px;
+      background: #94A3B8;
+      border-radius: 1px;
+    }
+
+    .selector-close-btn {
+      background: transparent;
+      border: none;
+      color: #94A3B8;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.15s ease;
+    }
+
+    .selector-close-btn:hover {
+      color: #F8FAFC;
+    }
+  </style>
+</head>
+<body>
+  <div id="selectorCard" class="selector-standalone-card">
+    <!-- Draggable Header Region -->
+    <div id="dragHeader" class="selector-drag-header" title="Drag to reposition selector card">
+      <div class="selector-title-wrap">
+        <div class="selector-drag-grip">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span class="selector-badge">CharmDrop</span>
+        <span class="selector-title">Choose Charm</span>
+      </div>
+      <button id="selectorCloseBtn" class="selector-close-btn" title="Close (Esc)">✕</button>
+    </div>
+
+    <!-- Category Tabs -->
+    <div id="selectorCategoryTabs" class="selector-category-tabs"></div>
+
+    <!-- Charm list selection -->
+    <div id="charmList" class="selector-charm-list"></div>
+
+    <!-- Quick Position Presets Section (Reposition the Hanging Charm) -->
+    <div id="selectorPositionRow" class="selector-preset-row">
+      <span class="selector-preset-label">Charm Position</span>
+      <div class="selector-preset-buttons">
+        <button type="button" class="preset-btn" data-preset="top-left" title="Move Hanging Charm to Top Left">Left</button>
+        <button type="button" class="preset-btn" data-preset="top-center" title="Move Hanging Charm to Top Center">Center</button>
+        <button type="button" class="preset-btn" data-preset="top-right" title="Move Hanging Charm to Top Right">Right</button>
+      </div>
+    </div>
+
+    <!-- Daily Status Section -->
+    <div id="dailyStatusSection" class="selector-daily-card" style="display: none;"></div>
+
+    <div class="selector-footer">
+      <span>Drag header to move card • <kbd>Ctrl+Shift+C</kbd></span>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getAllCharms, CHARM_CATEGORIES } from './data/charms.js';
+    import { SettingsManager, SETTINGS_KEYS } from './js/settingsManager.js';
+    import { DailyCharmManager } from './js/dailyCharmManager.js';
+
+    let currentSelectedId = SettingsManager.get(SETTINGS_KEYS.SELECTED_CHARM_ID, 'nimbu-mirchi');
+    let activeCategory = 'All';
+    const dailyManager = new DailyCharmManager({
+      onStateChange: () => renderDailySection()
+    });
+
+    const dragHeader = document.getElementById('dragHeader');
+    const tabsContainer = document.getElementById('selectorCategoryTabs');
+    const listElement = document.getElementById('charmList');
+    const positionRow = document.getElementById('selectorPositionRow');
+    const dailySection = document.getElementById('dailyStatusSection');
+    const closeBtn = document.getElementById('selectorCloseBtn');
+
+    // 1. Setup Card Manual Dragging
+    let isDraggingCard = false;
+    let lastScreenX = 0;
+    let lastScreenY = 0;
+
+    dragHeader.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#selectorCloseBtn')) return;
+      if (e.button !== 0) return;
+      isDraggingCard = true;
+      lastScreenX = e.screenX;
+      lastScreenY = e.screenY;
+      dragHeader.classList.add('is-dragging');
+      try {
+        dragHeader.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDraggingCard) return;
+      const deltaX = e.screenX - lastScreenX;
+      const deltaY = e.screenY - lastScreenY;
+      lastScreenX = e.screenX;
+      lastScreenY = e.screenY;
+
+      if ((Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0) && window.electronAPI && window.electronAPI.moveSelectorWindowBy) {
+        window.electronAPI.moveSelectorWindowBy(deltaX, deltaY);
+      }
+    });
+
+    const endDrag = () => {
+      if (!isDraggingCard) return;
+      isDraggingCard = false;
+      dragHeader.classList.remove('is-dragging');
+      if (window.electronAPI && window.electronAPI.saveSelectorPosition) {
+        window.electronAPI.saveSelectorPosition();
+      }
+    };
+
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+
+    // 2. Render Category Tabs
+    function renderCategoryTabs() {
+      tabsContainer.innerHTML = '';
+      const categories = ['All', ...CHARM_CATEGORIES];
+      categories.forEach((cat) => {
+        const chip = document.createElement('button');
+        chip.className = `category-tab-chip ${activeCategory === cat ? 'is-active' : ''}`;
+        chip.textContent = cat;
+        chip.addEventListener('click', (e) => {
+          e.stopPropagation();
+          activeCategory = cat;
+          renderCategoryTabs();
+          renderCharmList();
+        });
+        tabsContainer.appendChild(chip);
+      });
+    }
+
+    // 3. Render Charm List
+    function renderCharmList() {
+      listElement.innerHTML = '';
+      const allCharms = getAllCharms();
+      const filtered = activeCategory === 'All'
+        ? allCharms
+        : allCharms.filter((c) => c.category.toLowerCase() === activeCategory.toLowerCase());
+
+      filtered.forEach((charm) => {
+        const item = document.createElement('div');
+        item.className = `selector-charm-item ${currentSelectedId === charm.id ? 'is-active' : ''}`;
+        item.dataset.charmId = charm.id;
+
+        const soundBadge = charm.sound ? `<span class="selector-sound-indicator" title="Sound Effects available">🔊</span>` : '';
+
+        item.innerHTML = `
+          <div class="selector-charm-left">
+            <img src="${charm.image}" alt="${charm.name}" class="selector-thumb-img" draggable="false" />
+            <span class="selector-charm-title">${charm.name}${soundBadge}</span>
+          </div>
+          <span class="selector-charm-tag">${charm.category}</span>
+        `;
+
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          currentSelectedId = charm.id;
+          SettingsManager.set(SETTINGS_KEYS.SELECTED_CHARM_ID, charm.id);
+          renderCharmList();
+          renderDailySection();
+          if (window.electronAPI && window.electronAPI.switchCharm) {
+            window.electronAPI.switchCharm(charm.id);
+          }
+        });
+
+        listElement.appendChild(item);
+      });
+    }
+
+    // 4. Render Position Preset Buttons
+    function updatePositionButtons(activePreset) {
+      const norm = String(activePreset || 'top-right').toLowerCase().trim();
+      const presetBtns = positionRow.querySelectorAll('.preset-btn');
+      presetBtns.forEach((btn) => {
+        const btnPreset = String(btn.dataset.preset || '').toLowerCase().trim();
+        const isMatch = btnPreset === norm ||
+                        (btnPreset.includes('left') && norm.includes('left')) ||
+                        (btnPreset.includes('center') && norm.includes('center')) ||
+                        (btnPreset.includes('right') && norm.includes('right'));
+        btn.classList.toggle('is-active', isMatch);
+      });
+    }
+
+    if (positionRow) {
+      const presetBtns = positionRow.querySelectorAll('.preset-btn');
+      presetBtns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const preset = btn.dataset.preset;
+          if (preset) {
+            SettingsManager.set(SETTINGS_KEYS.POSITION_MODE, preset);
+            updatePositionButtons(preset);
+            if (window.electronAPI && window.electronAPI.setPositionPreset) {
+              window.electronAPI.setPositionPreset(preset);
+            }
+          }
+        });
+      });
+    }
+
+    // 5. Render Daily Section
+    function renderDailySection() {
+      if (currentSelectedId !== 'nimbu-mirchi') {
+        dailySection.style.display = 'none';
+        return;
+      }
+
+      dailySection.style.display = 'flex';
+      dailySection.innerHTML = '';
+      const state = dailyManager.getNimbuState();
+
+      const statusRow = document.createElement('div');
+      statusRow.className = 'daily-status-row';
+      statusRow.innerHTML = `
+        <span class="daily-status-label">Nimbu Mirchi</span>
+        <span class="daily-status-badge ${state.isFresh ? 'is-fresh' : 'is-faded'}">
+          <span class="daily-status-dot"></span>
+          ${state.isFresh ? 'Fresh Today' : 'Completed Today'}
+        </span>
+      `;
+      dailySection.appendChild(statusRow);
+
+      if (!state.isFresh) {
+        const hangBtn = document.createElement('button');
+        hangBtn.className = 'btn-hang-new';
+        hangBtn.innerHTML = `Hang New Nimbu Mirchi`;
+        hangBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dailyManager.hangNewNimbu();
+          if (window.electronAPI && window.electronAPI.hangNewNimbu) {
+            window.electronAPI.hangNewNimbu();
+          }
+          renderDailySection();
+        });
+        dailySection.appendChild(hangBtn);
+      }
+    }
+
+    // 6. Close Handler
+    const closeSelector = () => {
+      if (window.electronAPI && window.electronAPI.closeSelectorWindow) {
+        window.electronAPI.closeSelectorWindow();
+      } else {
+        window.close();
+      }
+    };
+
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeSelector();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || (e.ctrlKey && e.shiftKey && (e.key === 'c' || e.key === 'C'))) {
+        e.preventDefault();
+        closeSelector();
+      }
+    });
+
+    // 7. IPC Listeners
+    if (window.electronAPI) {
+      if (window.electronAPI.onSwitchCharm) {
+        window.electronAPI.onSwitchCharm((charmId) => {
+          currentSelectedId = charmId;
+          renderCharmList();
+          renderDailySection();
+        });
+      }
+
+      if (window.electronAPI.onPositionPresetApplied) {
+        window.electronAPI.onPositionPresetApplied((data) => {
+          if (data && data.preset) {
+            updatePositionButtons(data.preset);
+          }
+        });
+      }
+
+      if (window.electronAPI.onHangNewNimbu) {
+        window.electronAPI.onHangNewNimbu(() => {
+          renderDailySection();
+        });
+      }
+
+      if (window.electronAPI.onSimulateNextDay) {
+        window.electronAPI.onSimulateNextDay(() => {
+          dailyManager.simulateNextDay();
+          renderDailySection();
+        });
+      }
+    }
+
+    // Initial render
+    renderCategoryTabs();
+    renderCharmList();
+    renderDailySection();
+    updatePositionButtons(SettingsManager.get(SETTINGS_KEYS.POSITION_MODE, 'top-right'));
+  </script>
+</body>
+</html>

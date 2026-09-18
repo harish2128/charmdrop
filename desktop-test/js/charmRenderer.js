@@ -1,9 +1,8 @@
 /**
- * Reusable Charm Renderer & Interactive Selector Manager
- * Integrates CharmEngine physics with DailyCharmManager, SettingsManager, and Windows System Tray IPC.
+ * Reusable Charm Renderer & Physics Integration Manager for Desktop Main Window
  */
 
-import { getCharmById, getAllCharms, CHARM_CATEGORIES } from '../data/charms.js';
+import { getCharmById, getAllCharms } from '../data/charms.js';
 import { CharmEngine, ENGINE_STATES } from './charmEngine.js';
 import { DailyCharmManager } from './dailyCharmManager.js';
 import { SettingsManager, SETTINGS_KEYS } from './settingsManager.js';
@@ -13,25 +12,15 @@ export class CharmRenderer {
   constructor({
     rigElementId = 'charmRig',
     containerElementId = 'charmContainer',
-    panelElementId = 'charmSelectorPanel',
-    listElementId = 'charmList',
-    dailySectionId = 'dailyStatusSection',
-    closeBtnId = 'selectorCloseBtn',
     debugOverlayId = 'physicsDebugOverlay'
   } = {}) {
     this.rigElement = document.getElementById(rigElementId);
     this.containerElement = document.getElementById(containerElementId);
-    this.panelElement = document.getElementById(panelElementId);
-    this.listElement = document.getElementById(listElementId);
-    this.dailySection = document.getElementById(dailySectionId);
-    this.closeBtn = document.getElementById(closeBtnId);
     this.debugOverlay = document.getElementById(debugOverlayId);
 
     this.currentCharm = null;
     this.engine = null;
-    this.isSelectorOpen = false;
     this.isDebugOpen = false;
-    this.activeCategoryFilter = 'All';
 
     // Daily Charm Manager & Charm Sound Manager
     this.dailyManager = new DailyCharmManager({
@@ -63,21 +52,16 @@ export class CharmRenderer {
     // 3. Load active charm with its configured weight & sound settings
     this.loadCharm(storedCharmId, false);
 
-    // 4. Initialize Charm Selector UI, shortcuts, debug mode & System Tray IPC listeners
-    this.setupSelectorUI();
+    // 4. Initialize debug shortcut & System Tray / Window IPC listeners
     this.setupDebugShortcut();
     this.setupTrayIPC();
 
-    // 5. Initial preset buttons highlight
-    const initialMode = SettingsManager.get(SETTINGS_KEYS.POSITION_MODE, 'top-right');
-    this.updatePositionPresetButtons(initialMode);
-
-    // 6. Initial sync with main process tray menu
+    // 5. Initial sync with main process tray menu
     this.syncWithMainProcess();
   }
 
   /**
-   * Load and render any charm by ID with smooth 160-200ms crossfade
+   * Load and render any charm by ID with smooth crossfade
    * @param {string} charmId
    * @param {boolean} animate
    * @param {boolean} isFreshEntryAction
@@ -151,7 +135,7 @@ export class CharmRenderer {
       };
 
       this.containerElement.appendChild(img);
-      this.containerElement.title = `${charm.name} • Scroll or Drag to swing • Ctrl+Shift+Q to quit`;
+      this.containerElement.title = `${charm.name} • Drag charm to move • Ctrl+Shift+C Choose Charm`;
 
       // Trigger fade-in
       if (animate && !isFreshEntryAction) {
@@ -171,8 +155,6 @@ export class CharmRenderer {
         this.engine.state = ENGINE_STATES.IDLE;
       }
 
-      this.updateSelectorActiveItem();
-      this.renderDailyStatusSection();
       this.syncWithMainProcess();
     };
 
@@ -206,7 +188,6 @@ export class CharmRenderer {
         img.classList.add('is-faded');
       }
     }
-    this.renderDailyStatusSection();
     this.syncWithMainProcess();
   }
 
@@ -257,7 +238,6 @@ export class CharmRenderer {
       window.electronAPI.onPositionPresetApplied((data) => {
         if (this.engine) this.engine.resumeAfterPresetMove(data.direction || 0);
         SettingsManager.set(SETTINGS_KEYS.POSITION_MODE, data.preset);
-        this.updatePositionPresetButtons(data.preset);
       });
     }
 
@@ -271,335 +251,6 @@ export class CharmRenderer {
       window.electronAPI.onSimulateNextDay(() => {
         this.dailyManager.simulateNextDay();
       });
-    }
-  }
-
-  /**
-   * Update active button visual highlight in selector panel
-   * @param {'top-left' | 'top-center' | 'top-right' | 'custom'} activePreset
-   */
-  updatePositionPresetButtons(activePreset) {
-    const positionRow = document.getElementById('selectorPositionRow');
-    if (!positionRow) return;
-    const norm = String(activePreset || 'top-right').toLowerCase().trim();
-    const presetBtns = positionRow.querySelectorAll('.preset-btn');
-    presetBtns.forEach((btn) => {
-      const btnPreset = String(btn.dataset.preset || '').toLowerCase().trim();
-      const isMatch = btnPreset === norm ||
-                      (btnPreset.includes('left') && norm.includes('left')) ||
-                      (btnPreset.includes('center') && norm.includes('center')) ||
-                      (btnPreset.includes('right') && norm.includes('right'));
-      btn.classList.toggle('is-active', isMatch);
-    });
-  }
-
-  /**
-   * Setup Charm Selector panel list & keyboard shortcuts
-   */
-  setupSelectorUI() {
-    this.renderCategoryTabs();
-    this.renderCharmList();
-
-    // Position preset buttons in selector panel: immediate UI update + instant persistence + window move
-    const positionRow = document.getElementById('selectorPositionRow');
-    if (positionRow) {
-      const presetBtns = positionRow.querySelectorAll('.preset-btn');
-      presetBtns.forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const preset = btn.dataset.preset;
-          if (preset) {
-            SettingsManager.set(SETTINGS_KEYS.POSITION_MODE, preset);
-            this.updatePositionPresetButtons(preset);
-            if (window.electronAPI && window.electronAPI.setPositionPreset) {
-              window.electronAPI.setPositionPreset(preset);
-            }
-          }
-        });
-      });
-    }
-
-    // Prevent any physics drag or canvas wheel events from selector panel interactions
-    if (this.panelElement) {
-      ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'wheel'].forEach((eventType) => {
-        this.panelElement.addEventListener(eventType, (e) => {
-          e.stopPropagation();
-        }, { passive: false });
-      });
-    }
-
-    // Subtle, smooth, premium hover micro-interaction on selector card
-    // Activates ONLY when pointer is directly hovering inside the selector card bounds
-    if (this.panelElement) {
-      let isHoveringPanel = false;
-      let targetOffsetX = 0;
-      let targetOffsetY = 0;
-      let targetRotation = 0;
-      let hoverRafId = null;
-      let currentOffsetX = 0;
-      let currentOffsetY = 0;
-      let currentRotation = 0;
-
-      const updateCardTransform = () => {
-        if (!this.panelElement) return;
-
-        // Smooth interpolation towards target
-        const lerpFactor = isHoveringPanel ? 0.18 : 0.12;
-        currentOffsetX += (targetOffsetX - currentOffsetX) * lerpFactor;
-        currentOffsetY += (targetOffsetY - currentOffsetY) * lerpFactor;
-        currentRotation += (targetRotation - currentRotation) * lerpFactor;
-
-        // Apply restrained transform relative to base translateX(-50%)
-        this.panelElement.style.transform = `translateX(calc(-50% + ${currentOffsetX.toFixed(2)}px)) translateY(${currentOffsetY.toFixed(2)}px) rotate(${currentRotation.toFixed(2)}deg)`;
-
-        // Continue loop if hovering or if not yet settled back to 0
-        if (
-          isHoveringPanel ||
-          Math.abs(currentOffsetX) > 0.04 ||
-          Math.abs(currentOffsetY) > 0.04 ||
-          Math.abs(currentRotation) > 0.04
-        ) {
-          hoverRafId = requestAnimationFrame(updateCardTransform);
-        } else {
-          currentOffsetX = 0;
-          currentOffsetY = 0;
-          currentRotation = 0;
-          this.panelElement.style.transform = 'translateX(-50%) translateY(0px) rotate(0deg)';
-          hoverRafId = null;
-        }
-      };
-
-      const onPanelMouseMove = (e) => {
-        if (!this.isSelectorOpen) return;
-        const rect = this.panelElement.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return;
-
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        const relX = (e.clientX - centerX) / (rect.width / 2);
-        const relY = (e.clientY - centerY) / (rect.height / 2);
-
-        // Clamped subtle offsets: max ±4.0px translation in X, max ±3.0px in Y, max ±0.8° tilt
-        const clampedRelX = Math.max(-1, Math.min(1, relX));
-        const clampedRelY = Math.max(-1, Math.min(1, relY));
-
-        targetOffsetX = clampedRelX * 4.0;
-        targetOffsetY = clampedRelY * 3.0;
-        targetRotation = clampedRelX * 0.8;
-
-        if (!hoverRafId) {
-          hoverRafId = requestAnimationFrame(updateCardTransform);
-        }
-      };
-
-      this.panelElement.addEventListener('mouseenter', (e) => {
-        if (window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
-          window.electronAPI.setIgnoreMouseEvents(false);
-        }
-        isHoveringPanel = true;
-        onPanelMouseMove(e);
-      });
-
-      this.panelElement.addEventListener('mousemove', onPanelMouseMove);
-
-      this.panelElement.addEventListener('mouseleave', () => {
-        isHoveringPanel = false;
-        targetOffsetX = 0;
-        targetOffsetY = 0;
-        targetRotation = 0;
-        if (!hoverRafId) {
-          hoverRafId = requestAnimationFrame(updateCardTransform);
-        }
-      });
-    }
-
-    // Toggle button close handler
-    if (this.closeBtn) {
-      this.closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.toggleSelector(false);
-      });
-    }
-
-    // Keyboard Shortcuts: Ctrl + Shift + C & Escape
-    window.addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.shiftKey && (e.key === 'c' || e.key === 'C')) {
-        e.preventDefault();
-        this.toggleSelector();
-      } else if (e.key === 'Escape' && this.isSelectorOpen) {
-        e.preventDefault();
-        this.toggleSelector(false);
-      }
-    });
-
-    // IPC shortcut listener from main process
-    if (window.electronAPI && window.electronAPI.onToggleCharmSelector) {
-      window.electronAPI.onToggleCharmSelector(() => {
-        this.toggleSelector();
-      });
-    }
-
-  /**
-   * Render horizontal category filter chips in selector
-   */
-  renderCategoryTabs() {
-    let tabsContainer = document.getElementById('selectorCategoryTabs');
-    if (!tabsContainer && this.panelElement) {
-      tabsContainer = document.createElement('div');
-      tabsContainer.id = 'selectorCategoryTabs';
-      tabsContainer.className = 'selector-category-tabs';
-      this.panelElement.insertBefore(tabsContainer, this.listElement);
-    }
-
-    if (!tabsContainer) return;
-    tabsContainer.innerHTML = '';
-
-    const categories = ['All', ...CHARM_CATEGORIES];
-    categories.forEach((cat) => {
-      const chip = document.createElement('button');
-      chip.className = `category-tab-chip ${this.activeCategoryFilter === cat ? 'is-active' : ''}`;
-      chip.textContent = cat;
-      chip.addEventListener('click', () => {
-        this.activeCategoryFilter = cat;
-        this.renderCategoryTabs();
-        this.renderCharmList();
-      });
-      tabsContainer.appendChild(chip);
-    });
-  }
-
-  /**
-   * Render the list of available charms into the selector panel
-   */
-  renderCharmList() {
-    if (!this.listElement) return;
-    this.listElement.innerHTML = '';
-
-    const allCharms = getAllCharms();
-    const filteredCharms = this.activeCategoryFilter === 'All'
-      ? allCharms
-      : allCharms.filter((c) => c.category.toLowerCase() === this.activeCategoryFilter.toLowerCase());
-
-    filteredCharms.forEach((charm) => {
-      const item = document.createElement('div');
-      item.className = `selector-charm-item ${this.currentCharm && this.currentCharm.id === charm.id ? 'is-active' : ''}`;
-      item.dataset.charmId = charm.id;
-
-      const soundBadge = charm.sound ? `<span class="selector-sound-indicator" title="Sound Effects available">🔊</span>` : '';
-
-      item.innerHTML = `
-        <div class="selector-charm-left">
-          <img src="${charm.image}" alt="${charm.name}" class="selector-thumb-img" draggable="false" />
-          <span class="selector-charm-title">${charm.name}${soundBadge}</span>
-        </div>
-        <span class="selector-charm-tag">${charm.category}</span>
-      `;
-
-      item.addEventListener('click', () => {
-        this.loadCharm(charm.id, true);
-        setTimeout(() => this.toggleSelector(false), 220);
-      });
-
-      this.listElement.appendChild(item);
-    });
-  }
-
-  /**
-   * Render Daily Status Card when active charm has dailyRefresh: true
-   */
-  renderDailyStatusSection() {
-    if (!this.dailySection) return;
-
-    if (!this.currentCharm || !this.currentCharm.dailyRefresh) {
-      this.dailySection.style.display = 'none';
-      return;
-    }
-
-    this.dailySection.style.display = 'flex';
-    this.dailySection.innerHTML = '';
-
-    const state = this.dailyManager.getNimbuState();
-
-    // 1. Status Row
-    const statusRow = document.createElement('div');
-    statusRow.className = 'daily-status-row';
-    statusRow.innerHTML = `
-      <span class="daily-status-label">${this.currentCharm.name}</span>
-      <span class="daily-status-badge ${state.isFresh ? 'is-fresh' : 'is-faded'}">
-        <span class="daily-status-dot"></span>
-        ${state.isFresh ? 'Fresh Today' : 'Completed Today'}
-      </span>
-    `;
-    this.dailySection.appendChild(statusRow);
-
-    // 2. Hang New Button (shown when charm is faded)
-    if (!state.isFresh) {
-      const hangBtn = document.createElement('button');
-      hangBtn.className = 'btn-hang-new';
-      hangBtn.innerHTML = `Hang New ${this.currentCharm.name}`;
-      hangBtn.addEventListener('click', () => {
-        this.dailyManager.hangNewNimbu();
-      });
-      this.dailySection.appendChild(hangBtn);
-    }
-
-    // 3. DEV TEST: Simulate Next Day button (Only rendered when debug mode is active)
-    if (this.isDebugOpen) {
-      const devBtn = document.createElement('button');
-      devBtn.className = 'btn-dev-simulate';
-      devBtn.innerHTML = `DEV TEST: Simulate Next Day`;
-      devBtn.title = 'Test rollover to next calendar day (forces faded state locally)';
-      devBtn.addEventListener('click', () => {
-        this.dailyManager.simulateNextDay();
-      });
-      this.dailySection.appendChild(devBtn);
-    }
-  }
-
-  updateSelectorActiveItem() {
-    if (!this.listElement) return;
-    const items = this.listElement.querySelectorAll('.selector-charm-item');
-    items.forEach((item) => {
-      if (this.currentCharm && item.dataset.charmId === this.currentCharm.id) {
-        item.classList.add('is-active');
-      } else {
-        item.classList.remove('is-active');
-      }
-    });
-  }
-
-  /**
-   * Toggle selector panel visibility
-   * @param {boolean} [forceState]
-   */
-  toggleSelector(forceState) {
-    this.isSelectorOpen = forceState !== undefined ? forceState : !this.isSelectorOpen;
-
-    if (this.panelElement) {
-      this.panelElement.style.display = this.isSelectorOpen ? 'flex' : 'none';
-      if (this.isSelectorOpen) {
-        this.renderCategoryTabs();
-        this.renderCharmList();
-        this.renderDailyStatusSection();
-        const currentMode = SettingsManager.get(SETTINGS_KEYS.POSITION_MODE, 'top-right');
-        this.updatePositionPresetButtons(currentMode);
-      } else {
-        this.panelElement.style.transform = 'translateX(-50%) translateY(0px) rotate(0deg)';
-      }
-    }
-
-    // Inform the physics engine so it can separate the UI safe zone from rope physics
-    if (this.engine) {
-      this.engine.setSelectorOpen(this.isSelectorOpen, this.panelElement);
-    }
-
-    if (window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
-      if (this.isSelectorOpen) {
-        window.electronAPI.setIgnoreMouseEvents(false);
-      } else {
-        window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-      }
     }
   }
 

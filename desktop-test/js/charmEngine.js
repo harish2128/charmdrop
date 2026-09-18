@@ -189,21 +189,6 @@ export class CharmEngine {
     this.isDebugMode = !!enabled;
   }
 
-  setSelectorOpen(isOpen, selectorElement = null) {
-    this.isSelectorOpen = !!isOpen;
-    if (selectorElement) {
-      this.selectorElement = selectorElement;
-    }
-    if (this.isSelectorOpen) {
-      this.proximityFactor = 0;
-      this.cursorPushDirX = 0;
-      this.cursorVx = 0;
-      this.cursorVy = 0;
-      this.isInsideInteractionZone = false;
-      this.isIgnoringMouse = false;
-    }
-  }
-
   init() {
     this.setupCursorTracking();
     this.setupEventListeners();
@@ -216,33 +201,6 @@ export class CharmEngine {
         this.proximityFactor = 0;
         this.cursorPushDirX = 0;
         this.currentDist = 9999;
-        return;
-      }
-
-      // Check if cursor is inside the Selector UI Safe Zone
-      let isOverSelector = false;
-      if (this.isSelectorOpen && this.selectorElement) {
-        const rect = this.selectorElement.getBoundingClientRect();
-        if (
-          rect.width > 0 &&
-          rect.height > 0 &&
-          localX >= rect.left - 4 &&
-          localX <= rect.right + 4 &&
-          localY >= rect.top - 4 &&
-          localY <= rect.bottom + 4
-        ) {
-          isOverSelector = true;
-        }
-      }
-
-      if (isOverSelector) {
-        // UI Safe Zone: Do not inject proximity repulsion or wake forces into charm physics
-        this.proximityFactor = 0;
-        this.cursorPushDirX = 0;
-        this.cursorVx = 0;
-        this.cursorVy = 0;
-        this.currentDist = 9999;
-        this.isInsideInteractionZone = false;
         return;
       }
 
@@ -297,7 +255,7 @@ export class CharmEngine {
         this.cursorPushDirX = 0;
         this.stationaryTime = 0;
 
-        if (!this.isSelectorOpen && !this.isIgnoringMouse && !this.isDragging && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
+        if (!this.isIgnoringMouse && !this.isDragging && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
           window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
           this.isIgnoringMouse = true;
         }
