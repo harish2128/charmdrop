@@ -144,7 +144,7 @@ export function FloatingDemoSection() {
             {activeTab === "browser" && (
               <div className="sim-app-browser">
                 <div className="sim-browser-bar">
-                  <div className="sim-address-box">https://tetroinyx.netlify.app/charmdrop</div>
+                  <div className="sim-address-box">https://tetroniyx.netlify.app/charmdrop</div>
                 </div>
                 <div className="sim-content-cards">
                   <div className="sim-skeleton-card card-lg" />

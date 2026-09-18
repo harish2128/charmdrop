@@ -57,7 +57,7 @@ export class CharmEngine {
       numPoints: config.numPoints || DEFAULT_NUM_POINTS,
       constraintIterations: config.constraintIterations || CONSTRAINT_ITERATIONS,
       ropeLengthPx: config.ropeLengthPx || 70.0,
-      damping: config.damping || 0.990,
+      damping: config.damping || 0.980,
       proximityRadius: config.proximityRadius || 220.0,
       maxDragAngleDeg: config.maxDragAngleDeg || 38.0,
       maxPullYPx: config.maxPullYPx || 80.0,
@@ -114,6 +114,10 @@ export class CharmEngine {
     this.isPresetMoving = false;
     this.isIgnoringMouse = true;
     this.isDebugMode = false;
+
+    // Selector UI Safe Zone separation
+    this.isSelectorOpen = false;
+    this.selectorElement = null;
 
     this.init();
   }
@@ -185,6 +189,21 @@ export class CharmEngine {
     this.isDebugMode = !!enabled;
   }
 
+  setSelectorOpen(isOpen, selectorElement = null) {
+    this.isSelectorOpen = !!isOpen;
+    if (selectorElement) {
+      this.selectorElement = selectorElement;
+    }
+    if (this.isSelectorOpen) {
+      this.proximityFactor = 0;
+      this.cursorPushDirX = 0;
+      this.cursorVx = 0;
+      this.cursorVy = 0;
+      this.isInsideInteractionZone = false;
+      this.isIgnoringMouse = false;
+    }
+  }
+
   init() {
     this.setupCursorTracking();
     this.setupEventListeners();
@@ -197,6 +216,33 @@ export class CharmEngine {
         this.proximityFactor = 0;
         this.cursorPushDirX = 0;
         this.currentDist = 9999;
+        return;
+      }
+
+      // Check if cursor is inside the Selector UI Safe Zone
+      let isOverSelector = false;
+      if (this.isSelectorOpen && this.selectorElement) {
+        const rect = this.selectorElement.getBoundingClientRect();
+        if (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          localX >= rect.left - 4 &&
+          localX <= rect.right + 4 &&
+          localY >= rect.top - 4 &&
+          localY <= rect.bottom + 4
+        ) {
+          isOverSelector = true;
+        }
+      }
+
+      if (isOverSelector) {
+        // UI Safe Zone: Do not inject proximity repulsion or wake forces into charm physics
+        this.proximityFactor = 0;
+        this.cursorPushDirX = 0;
+        this.cursorVx = 0;
+        this.cursorVy = 0;
+        this.currentDist = 9999;
+        this.isInsideInteractionZone = false;
         return;
       }
 
@@ -251,7 +297,7 @@ export class CharmEngine {
         this.cursorPushDirX = 0;
         this.stationaryTime = 0;
 
-        if (!this.isIgnoringMouse && !this.isDragging && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
+        if (!this.isSelectorOpen && !this.isIgnoringMouse && !this.isDragging && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
           window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
           this.isIgnoringMouse = true;
         }
@@ -277,7 +323,7 @@ export class CharmEngine {
       this.cursorVx = 0;
       this.cursorVy = 0;
       this.stationaryTime = 0;
-      if (!this.isIgnoringMouse && !this.isDragging && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
+      if (!this.isSelectorOpen && !this.isIgnoringMouse && !this.isDragging && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
         window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
         this.isIgnoringMouse = true;
       }
@@ -410,17 +456,17 @@ export class CharmEngine {
       releaseVy = (newest.screenY - oldest.screenY) / frames;
     }
 
-    // Inject release momentum into lower rope points
+    // Inject release momentum into lower rope points (gentle, controlled flick)
     const lastP = this.points[this.numPoints - 1];
-    const boost = Math.max(-14, Math.min(14, releaseVx * 0.90 * this.charmPhysics.swingMultiplier));
+    const boost = Math.max(-6.5, Math.min(6.5, releaseVx * 0.40 * this.charmPhysics.swingMultiplier));
     lastP.oldX = lastP.x - boost;
-    lastP.oldY = lastP.y - Math.max(-8, Math.min(8, releaseVy * 0.75));
+    lastP.oldY = lastP.y - Math.max(-3.5, Math.min(3.5, releaseVy * 0.35));
 
     // Propagate momentum wave to neighboring lower points
     const lowerStart = Math.floor(this.numPoints * 0.55);
     for (let i = this.numPoints - 2; i >= lowerStart; i--) {
       const factor = (i - lowerStart) / (this.numPoints - 1 - lowerStart);
-      this.points[i].oldX = this.points[i].x - boost * factor * 0.82;
+      this.points[i].oldX = this.points[i].x - boost * factor * 0.70;
     }
 
     this.state = ENGINE_STATES.SETTLING;
@@ -439,11 +485,12 @@ export class CharmEngine {
   }
 
   getOrganicIdleForce(now) {
-    const t = now * 0.001;
-    const h1 = Math.sin(t * 0.85) * 0.45;
-    const h2 = Math.sin(t * 0.48 + 1.2) * 0.28;
-    const h3 = Math.sin(t * 1.25 + 2.7) * 0.14;
-    const breath = 0.85 + 0.15 * Math.sin(t * 0.15);
+    // Slower, calmer natural time scale for gentle organic sway
+    const t = now * 0.0006;
+    const h1 = Math.sin(t * 0.65) * 0.32;
+    const h2 = Math.sin(t * 0.35 + 1.2) * 0.18;
+    const h3 = Math.sin(t * 0.90 + 2.7) * 0.08;
+    const breath = 0.90 + 0.10 * Math.sin(t * 0.12);
     return (h1 + h2 + h3) * breath;
   }
 
@@ -454,14 +501,14 @@ export class CharmEngine {
 
     const dtScale = Math.min(2.0, Math.max(0.5, dt / 16.67));
 
-    // Damping: Verlet velocity damping (~0.988 - 0.994)
-    const baseDamping = this.config.damping || 0.990;
-    const effectiveDamping = Math.max(0.985, Math.min(0.995, baseDamping * (this.charmPhysics.dampingMultiplier || 1.0)));
+    // Damping: Smooth settling damping (~0.975 - 0.985)
+    const baseDamping = this.config.damping || 0.980;
+    const effectiveDamping = Math.max(0.975, Math.min(0.985, baseDamping * (this.charmPhysics.dampingMultiplier || 1.0)));
 
     // Subtle downward gravity (pulls points downward so rope hangs naturally)
     const gravity = 0.32 / Math.sqrt(this.charmPhysics.weight || 1.0);
 
-    // Organic idle wind sway
+    // Organic idle wind sway (gentle, calming breeze)
     const idleWind = this.getOrganicIdleForce(now);
 
     // Stationary cursor stabilization
@@ -469,8 +516,9 @@ export class CharmEngine {
       ? Math.max(0.48, 1.0 - Math.min(1.0, this.stationaryTime / 350.0) * 0.52)
       : 1.0;
 
-    const basePushForce = 2.5 * (this.charmPhysics.swingMultiplier || 1.0);
-    const wakeStrength = 0.16 * (this.charmPhysics.swingMultiplier || 1.0);
+    // Smooth proximity push and gentle wake
+    const basePushForce = 0.75 * (this.charmPhysics.swingMultiplier || 1.0);
+    const wakeStrength = 0.045 * (this.charmPhysics.swingMultiplier || 1.0);
 
     // Verlet Integration for points 1..11
     for (let i = 1; i < this.numPoints; i++) {
@@ -493,11 +541,12 @@ export class CharmEngine {
       p.oldX = p.x;
       p.oldY = p.y;
 
-      const fIdle = idleWind * inf * 0.065 * (1.0 - this.proximityFactor);
+      const fIdle = idleWind * inf * 0.028 * (1.0 - this.proximityFactor);
       const fPush = this.cursorPushDirX * this.proximityFactor * basePushForce * inf * stationaryRelaxation;
       const fWake = this.cursorVx * wakeStrength * this.proximityFactor * inf;
+      const combinedForceX = Math.max(-1.8, Math.min(1.8, fIdle + fPush + fWake));
 
-      p.x += vx + (fIdle + fPush + fWake) * dtScale;
+      p.x += vx + combinedForceX * dtScale;
       p.y += vy + (gravity * dtScale);
     }
 

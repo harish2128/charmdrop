@@ -309,9 +309,21 @@ export class CharmRenderer {
       });
     }
 
+    // Prevent any physics drag or canvas wheel events from selector panel interactions
+    if (this.panelElement) {
+      ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'dblclick', 'wheel'].forEach((eventType) => {
+        this.panelElement.addEventListener(eventType, (e) => {
+          e.stopPropagation();
+        }, { passive: false });
+      });
+    }
+
     // Toggle button close handler
     if (this.closeBtn) {
-      this.closeBtn.addEventListener('click', () => this.toggleSelector(false));
+      this.closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleSelector(false);
+      });
     }
 
     // Keyboard Shortcuts: Ctrl + Shift + C & Escape
@@ -488,6 +500,11 @@ export class CharmRenderer {
         this.renderCharmList();
         this.renderDailyStatusSection();
       }
+    }
+
+    // Inform the physics engine so it can separate the UI safe zone from rope physics
+    if (this.engine) {
+      this.engine.setSelectorOpen(this.isSelectorOpen, this.panelElement);
     }
 
     if (window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
