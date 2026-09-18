@@ -344,17 +344,12 @@ export class CharmEngine {
 
     const clientX = e.clientX;
     const clientY = e.clientY;
-    const screenX = e.screenX !== undefined ? e.screenX : clientX;
-    const screenY = e.screenY !== undefined ? e.screenY : clientY;
 
     this.dragStartX = clientX;
     this.dragStartY = clientY;
-    this.dragStartScreenX = screenX;
-    this.dragStartScreenY = screenY;
-    this.lastScreenMoveX = screenX;
 
     this.pointerTrail.length = 0;
-    this.pointerTrail.push({ screenX, screenY, time: performance.now() });
+    this.pointerTrail.push({ clientX, clientY, time: performance.now() });
 
     if (this.isIgnoringMouse && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
       window.electronAPI.setIgnoreMouseEvents(false);
@@ -365,26 +360,12 @@ export class CharmEngine {
   handleDragMove(e) {
     if (!this.isDragging) return;
 
-    const screenX = e.screenX !== undefined ? e.screenX : e.clientX;
-    const screenY = e.screenY !== undefined ? e.screenY : e.clientY;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
 
-    // Move Hanging Charm Window horizontally (OBJECT A ONLY)
-    const deltaScreenX = screenX - this.lastScreenMoveX;
-    if (Math.abs(deltaScreenX) >= 1 && window.electronAPI) {
-      if (window.electronAPI.moveCharmWindow) {
-        window.electronAPI.moveCharmWindow(deltaScreenX);
-      } else if (window.electronAPI.moveWindowBy) {
-        window.electronAPI.moveWindowBy(deltaScreenX);
-      }
-      this.lastScreenMoveX = screenX;
-    }
-
-    const dx = e.clientX - this.dragStartX;
-    const dy = e.clientY - this.dragStartY;
-
-    // Target drag coordinates for the bottom point
-    const targetDragX = WINDOW_CENTER_X + Math.max(-95, Math.min(95, dx));
-    const targetDragY = this.ropeLength + Math.max(0, Math.min(this.config.maxPullYPx, dy));
+    // Follow cursor within transparent charm canvas (Top anchor at 170, 0 stays fixed)
+    const targetDragX = Math.max(25, Math.min(WINDOW_WIDTH - 25, clientX));
+    const targetDragY = Math.max(ANCHOR_Y + 40, Math.min(WINDOW_HEIGHT - 50, clientY - 15));
 
     const lastP = this.points[this.numPoints - 1];
     lastP.x = targetDragX;
@@ -392,7 +373,7 @@ export class CharmEngine {
 
     this.applyConstraints();
 
-    this.pointerTrail.push({ screenX, screenY, time: performance.now() });
+    this.pointerTrail.push({ clientX, clientY, time: performance.now() });
     while (this.pointerTrail.length > 6) {
       this.pointerTrail.shift();
     }
@@ -403,14 +384,6 @@ export class CharmEngine {
     this.isDragging = false;
     this.container.classList.remove('is-grabbing');
 
-    if (window.electronAPI) {
-      if (window.electronAPI.saveCharmPosition) {
-        window.electronAPI.saveCharmPosition();
-      } else if (window.electronAPI.saveWindowPosition) {
-        window.electronAPI.saveWindowPosition();
-      }
-    }
-
     let releaseVx = 0;
     let releaseVy = 0;
     if (this.pointerTrail.length >= 2) {
@@ -418,21 +391,21 @@ export class CharmEngine {
       const newest = this.pointerTrail[this.pointerTrail.length - 1];
       const timeDiff = Math.max(16, newest.time - oldest.time);
       const frames = timeDiff / 16.67;
-      releaseVx = (newest.screenX - oldest.screenX) / frames;
-      releaseVy = (newest.screenY - oldest.screenY) / frames;
+      releaseVx = (newest.clientX - oldest.clientX) / frames;
+      releaseVy = (newest.clientY - oldest.clientY) / frames;
     }
 
-    // Inject release momentum into lower rope points (gentle, controlled flick)
+    // Inject gentle, natural release momentum into lower rope points (no violent flick)
     const lastP = this.points[this.numPoints - 1];
-    const boost = Math.max(-6.5, Math.min(6.5, releaseVx * 0.40 * this.charmPhysics.swingMultiplier));
+    const boost = Math.max(-5.0, Math.min(5.0, releaseVx * 0.35 * this.charmPhysics.swingMultiplier));
     lastP.oldX = lastP.x - boost;
-    lastP.oldY = lastP.y - Math.max(-3.5, Math.min(3.5, releaseVy * 0.35));
+    lastP.oldY = lastP.y - Math.max(-2.5, Math.min(2.5, releaseVy * 0.25));
 
-    // Propagate momentum wave to neighboring lower points
+    // Propagate momentum wave to neighboring lower points for natural settlement
     const lowerStart = Math.floor(this.numPoints * 0.55);
     for (let i = this.numPoints - 2; i >= lowerStart; i--) {
       const factor = (i - lowerStart) / (this.numPoints - 1 - lowerStart);
-      this.points[i].oldX = this.points[i].x - boost * factor * 0.70;
+      this.points[i].oldX = this.points[i].x - boost * factor * 0.60;
     }
 
     this.state = ENGINE_STATES.SETTLING;
