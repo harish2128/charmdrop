@@ -368,10 +368,14 @@ export class CharmEngine {
     const screenX = e.screenX !== undefined ? e.screenX : e.clientX;
     const screenY = e.screenY !== undefined ? e.screenY : e.clientY;
 
-    // Move Electron Window horizontally
+    // Move Hanging Charm Window horizontally (OBJECT A ONLY)
     const deltaScreenX = screenX - this.lastScreenMoveX;
-    if (Math.abs(deltaScreenX) >= 1 && window.electronAPI && window.electronAPI.moveWindowBy) {
-      window.electronAPI.moveWindowBy(deltaScreenX);
+    if (Math.abs(deltaScreenX) >= 1 && window.electronAPI) {
+      if (window.electronAPI.moveCharmWindow) {
+        window.electronAPI.moveCharmWindow(deltaScreenX);
+      } else if (window.electronAPI.moveWindowBy) {
+        window.electronAPI.moveWindowBy(deltaScreenX);
+      }
       this.lastScreenMoveX = screenX;
     }
 
@@ -399,8 +403,12 @@ export class CharmEngine {
     this.isDragging = false;
     this.container.classList.remove('is-grabbing');
 
-    if (window.electronAPI && window.electronAPI.saveWindowPosition) {
-      window.electronAPI.saveWindowPosition();
+    if (window.electronAPI) {
+      if (window.electronAPI.saveCharmPosition) {
+        window.electronAPI.saveCharmPosition();
+      } else if (window.electronAPI.saveWindowPosition) {
+        window.electronAPI.saveWindowPosition();
+      }
     }
 
     let releaseVx = 0;

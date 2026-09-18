@@ -1,17 +1,43 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Mouse click-through control
   setIgnoreMouseEvents: (ignore, options) => {
     ipcRenderer.send('set-ignore-mouse-events', ignore, options);
   },
+
+  // Hanging Charm Window Drag & Position (OBJECT A)
+  moveCharmWindow: (deltaX) => {
+    ipcRenderer.send('move-charm-window', deltaX);
+  },
   moveWindowBy: (deltaX) => {
-    ipcRenderer.send('move-window-by', deltaX);
+    ipcRenderer.send('move-charm-window', deltaX);
+  },
+  saveCharmPosition: () => {
+    ipcRenderer.send('save-charm-position');
   },
   saveWindowPosition: () => {
-    ipcRenderer.send('save-window-position');
+    ipcRenderer.send('save-charm-position');
+  },
+  resetCharmPosition: () => {
+    ipcRenderer.send('reset-charm-position');
+  },
+  resetPosition: () => {
+    ipcRenderer.send('reset-charm-position');
+  },
+  setCharmPositionPreset: (preset) => {
+    ipcRenderer.send('set-charm-position-preset', preset);
+  },
+  setPositionPreset: (preset) => {
+    ipcRenderer.send('set-charm-position-preset', preset);
+  },
+
+  // Select Charm Card Window Drag & Position (OBJECT B)
+  moveSelectorWindow: (deltaX, deltaY) => {
+    ipcRenderer.send('move-selector-window', { deltaX, deltaY });
   },
   moveSelectorWindowBy: (deltaX, deltaY) => {
-    ipcRenderer.send('move-selector-window-by', { deltaX, deltaY });
+    ipcRenderer.send('move-selector-window', { deltaX, deltaY });
   },
   saveSelectorPosition: () => {
     ipcRenderer.send('save-selector-position');
@@ -19,6 +45,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeSelectorWindow: () => {
     ipcRenderer.send('close-selector-window');
   },
+
+  // Charm Selection & State Actions
   switchCharm: (charmId) => {
     ipcRenderer.send('switch-charm-from-selector', charmId);
   },
@@ -28,18 +56,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   simulateNextDay: () => {
     ipcRenderer.send('simulate-next-day-request');
   },
-  resetPosition: () => {
-    ipcRenderer.send('reset-position');
-  },
-  setPositionPreset: (preset) => {
-    ipcRenderer.send('set-position-preset', preset);
-  },
   quitApp: () => {
     ipcRenderer.send('quit-app');
   },
   sendCharmState: (state) => {
     ipcRenderer.send('charm-state-updated', state);
   },
+
+  // IPC Event Listeners from Main Process
   onToggleCharmSelector: (callback) => {
     ipcRenderer.on('toggle-charm-selector', () => callback());
   },
@@ -67,6 +91,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setSoundEffectsEnabled: (enabled) => {
     ipcRenderer.send('set-sound-effects-enabled', enabled);
   },
+
+  // About Window & Utilities
   closeAboutWindow: () => {
     ipcRenderer.send('close-about-window');
   },

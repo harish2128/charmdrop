@@ -34,6 +34,7 @@
       "preload.js",
       "renderer.js",
       "index.html",
+      "selector.html",
       "about.html",
       "style.css",
       "data/**/*",
@@ -49,7 +50,8 @@
           ]
         }
       ],
-      "icon": "assets/icons/charmdrop.ico"
+      "icon": "assets/icons/charmdrop.ico",
+      "signAndEditExecutable": false
     },
     "protocols": [
       {

@@ -150,36 +150,49 @@
     const dailySection = document.getElementById('dailyStatusSection');
     const closeBtn = document.getElementById('selectorCloseBtn');
 
-    // 1. Setup Card Manual Dragging
+    // 1. Setup Card Manual Dragging (Header Grip ONLY)
     let isDraggingCard = false;
     let lastScreenX = 0;
     let lastScreenY = 0;
 
-    dragHeader.addEventListener('pointerdown', (e) => {
+    const startCardDrag = (e) => {
       if (e.target.closest('#selectorCloseBtn')) return;
+      if (e.target.closest('button, .preset-btn, .category-tab-chip, .selector-charm-item')) return;
       if (e.button !== 0) return;
       isDraggingCard = true;
       lastScreenX = e.screenX;
       lastScreenY = e.screenY;
       dragHeader.classList.add('is-dragging');
-      try {
-        dragHeader.setPointerCapture(e.pointerId);
-      } catch (err) {}
-    });
+      if (e.pointerId !== undefined && dragHeader.setPointerCapture) {
+        try {
+          dragHeader.setPointerCapture(e.pointerId);
+        } catch (err) {}
+      }
+    };
 
-    window.addEventListener('pointermove', (e) => {
+    dragHeader.addEventListener('pointerdown', startCardDrag);
+    dragHeader.addEventListener('mousedown', startCardDrag);
+
+    const moveCardDrag = (e) => {
       if (!isDraggingCard) return;
       const deltaX = e.screenX - lastScreenX;
       const deltaY = e.screenY - lastScreenY;
       lastScreenX = e.screenX;
       lastScreenY = e.screenY;
 
-      if ((Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0) && window.electronAPI && window.electronAPI.moveSelectorWindowBy) {
-        window.electronAPI.moveSelectorWindowBy(deltaX, deltaY);
+      if ((Math.abs(deltaX) > 0 || Math.abs(deltaY) > 0) && window.electronAPI) {
+        if (window.electronAPI.moveSelectorWindow) {
+          window.electronAPI.moveSelectorWindow(deltaX, deltaY);
+        } else if (window.electronAPI.moveSelectorWindowBy) {
+          window.electronAPI.moveSelectorWindowBy(deltaX, deltaY);
+        }
       }
-    });
+    };
 
-    const endDrag = () => {
+    window.addEventListener('pointermove', moveCardDrag);
+    window.addEventListener('mousemove', moveCardDrag);
+
+    const endCardDrag = () => {
       if (!isDraggingCard) return;
       isDraggingCard = false;
       dragHeader.classList.remove('is-dragging');
@@ -188,8 +201,9 @@
       }
     };
 
-    window.addEventListener('pointerup', endDrag);
-    window.addEventListener('pointercancel', endDrag);
+    window.addEventListener('pointerup', endCardDrag);
+    window.addEventListener('pointercancel', endCardDrag);
+    window.addEventListener('mouseup', endCardDrag);
 
     // 2. Render Category Tabs
     function renderCategoryTabs() {

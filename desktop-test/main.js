@@ -506,7 +506,7 @@ function createWindow() {
   });
 
   // Handle horizontal charm dragging (Moves Charm Window ONLY)
-  ipcMain.on('move-window-by', (event, deltaX) => {
+  const handleCharmMove = (deltaX) => {
     if (presetAnimationTimer) {
       clearInterval(presetAnimationTimer);
       presetAnimationTimer = null;
@@ -523,10 +523,13 @@ function createWindow() {
 
       mainWindow.setPosition(newX, wa.y);
     }
-  });
+  };
 
-  // Handle saving charm window position on drag release
-  ipcMain.on('save-window-position', () => {
+  ipcMain.on('move-charm-window', (event, deltaX) => handleCharmMove(deltaX));
+  ipcMain.on('move-window-by', (event, deltaX) => handleCharmMove(deltaX));
+
+  // Handle saving charm window position on drag release (Saves Charm Window ONLY)
+  const handleCharmSave = () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const [currX, currY] = mainWindow.getPosition();
       saveSettings({
@@ -535,14 +538,23 @@ function createWindow() {
       });
       buildTrayMenu();
     }
-  });
+  };
 
-  // Handle setting preset position
+  ipcMain.on('save-charm-position', handleCharmSave);
+  ipcMain.on('save-window-position', handleCharmSave);
+
+  // Handle setting preset position (Moves Charm Window ONLY)
+  ipcMain.on('set-charm-position-preset', (event, preset) => {
+    setPositionPreset(preset);
+  });
   ipcMain.on('set-position-preset', (event, preset) => {
     setPositionPreset(preset);
   });
 
   // Handle position reset request
+  ipcMain.on('reset-charm-position', () => {
+    resetWindowPosition();
+  });
   ipcMain.on('reset-position', () => {
     resetWindowPosition();
   });
@@ -676,8 +688,8 @@ function toggleSelectorWindow() {
   }
 }
 
-// Selector Card Drag & IPC Communication Handlers
-ipcMain.on('move-selector-window-by', (event, { deltaX, deltaY }) => {
+// Selector Card Drag & IPC Communication Handlers (Moves Selector Window ONLY)
+const handleSelectorMove = ({ deltaX, deltaY }) => {
   if (selectorWindow && !selectorWindow.isDestroyed()) {
     const [currX, currY] = selectorWindow.getPosition();
     const currentDisplay = screen.getDisplayNearestPoint({ x: currX + (SELECTOR_WIDTH / 2), y: currY + (SELECTOR_HEIGHT / 2) });
@@ -689,12 +701,15 @@ ipcMain.on('move-selector-window-by', (event, { deltaX, deltaY }) => {
     const minY = wa.y;
     const maxY = wa.y + wa.height - 180;
 
-    const newX = Math.round(Math.max(minX, Math.min(maxX, currX + deltaX)));
-    const newY = Math.round(Math.max(minY, Math.min(maxY, currY + deltaY)));
+    const newX = Math.round(Math.max(minX, Math.min(maxX, currX + (deltaX || 0))));
+    const newY = Math.round(Math.max(minY, Math.min(maxY, currY + (deltaY || 0))));
 
     selectorWindow.setPosition(newX, newY);
   }
-});
+};
+
+ipcMain.on('move-selector-window', (event, data) => handleSelectorMove(data || {}));
+ipcMain.on('move-selector-window-by', (event, data) => handleSelectorMove(data || {}));
 
 ipcMain.on('save-selector-position', () => {
   if (selectorWindow && !selectorWindow.isDestroyed()) {
