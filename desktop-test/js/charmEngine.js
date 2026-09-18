@@ -309,7 +309,7 @@ export class CharmEngine {
     const onStart = (e) => {
       if (e.button !== 0) return;
       e.preventDefault();
-      if (e.pointerId !== undefined) {
+      if (e.pointerId !== undefined && this.container.setPointerCapture) {
         try {
           this.container.setPointerCapture(e.pointerId);
         } catch (err) {}
@@ -330,6 +330,11 @@ export class CharmEngine {
 
     // Drag end
     const onEnd = (e) => {
+      if (e.pointerId !== undefined && this.container.releasePointerCapture) {
+        try {
+          this.container.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+      }
       if (this.isDragging) this.handleDragEnd(e);
     };
     window.addEventListener('pointerup', onEnd);
@@ -344,6 +349,10 @@ export class CharmEngine {
 
     const clientX = e.clientX;
     const clientY = e.clientY;
+
+    const lastP = this.points[this.numPoints - 1] || { x: WINDOW_CENTER_X, y: this.ropeLength };
+    this.grabOffsetX = clientX - lastP.x;
+    this.grabOffsetY = clientY - (lastP.y + 35);
 
     this.dragStartX = clientX;
     this.dragStartY = clientY;
@@ -364,8 +373,8 @@ export class CharmEngine {
     const clientY = e.clientY;
 
     // Follow cursor within transparent charm canvas (Top anchor at 170, 0 stays fixed)
-    const targetDragX = Math.max(25, Math.min(WINDOW_WIDTH - 25, clientX));
-    const targetDragY = Math.max(ANCHOR_Y + 40, Math.min(WINDOW_HEIGHT - 50, clientY - 15));
+    const targetDragX = Math.max(25, Math.min(WINDOW_WIDTH - 25, clientX - (this.grabOffsetX || 0)));
+    const targetDragY = Math.max(ANCHOR_Y + 35, Math.min(WINDOW_HEIGHT - 55, clientY - (this.grabOffsetY || 0) - 35));
 
     const lastP = this.points[this.numPoints - 1];
     lastP.x = targetDragX;
@@ -508,6 +517,10 @@ export class CharmEngine {
 
   applyConstraints() {
     const iterations = this.config.constraintIterations || CONSTRAINT_ITERATIONS;
+    const lastIdx = this.numPoints - 1;
+    const dragTargetX = this.isDragging ? this.points[lastIdx].x : null;
+    const dragTargetY = this.isDragging ? this.points[lastIdx].y : null;
+
     for (let iter = 0; iter < iterations; iter++) {
       this.points[0].x = WINDOW_CENTER_X;
       this.points[0].y = ANCHOR_Y;
@@ -525,10 +538,10 @@ export class CharmEngine {
           const offsetX = dx * 0.5 * diff;
           const offsetY = dy * 0.5 * diff;
 
-          if (pA.fixed) {
+          if (pA.fixed || i === 0) {
             pB.x -= offsetX * 2;
             pB.y -= offsetY * 2;
-          } else if (pB.fixed) {
+          } else if (pB.fixed || (this.isDragging && i + 1 === lastIdx)) {
             pA.x += offsetX * 2;
             pA.y += offsetY * 2;
           } else {
@@ -542,6 +555,11 @@ export class CharmEngine {
 
       this.points[0].x = WINDOW_CENTER_X;
       this.points[0].y = ANCHOR_Y;
+
+      if (this.isDragging && dragTargetX !== null && dragTargetY !== null) {
+        this.points[lastIdx].x = dragTargetX;
+        this.points[lastIdx].y = dragTargetY;
+      }
     }
   }
 
