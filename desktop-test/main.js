@@ -188,6 +188,17 @@ function getCurrentDisplay() {
 }
 
 /**
+ * Normalizes preset names reliably across different callers ('left'/'top-left', etc.)
+ */
+function normalizePreset(preset) {
+  if (!preset) return 'top-right';
+  const p = String(preset).toLowerCase().trim();
+  if (p.includes('left')) return 'top-left';
+  if (p.includes('center') || p.includes('mid')) return 'top-center';
+  return 'top-right';
+}
+
+/**
  * Calculates preset position coordinates dynamically based on display workArea
  * @param {'top-left' | 'top-center' | 'top-right'} preset
  * @param {Electron.Display} [targetDisplay]
@@ -196,9 +207,10 @@ function calculatePresetPosition(preset, targetDisplay = null) {
   const display = targetDisplay || getCurrentDisplay();
   const wa = display.workArea;
   const y = wa.y; // Keep charm attached to top work area
+  const normalized = normalizePreset(preset);
   let x;
 
-  switch (preset) {
+  switch (normalized) {
     case 'top-left':
       x = Math.round(wa.x + 24);
       break;
@@ -250,7 +262,7 @@ function getValidatedPosition(savedPos) {
 let presetAnimationTimer = null;
 
 /**
- * Smoothly transitions the window horizontally to a preset position over ~280ms
+ * Smoothly transitions the window horizontally to a preset position over ~220ms
  * @param {'top-left' | 'top-center' | 'top-right'} presetName
  */
 function setPositionPreset(presetName) {
@@ -260,18 +272,21 @@ function setPositionPreset(presetName) {
     mainWindow.show();
   }
 
-  const targetPos = calculatePresetPosition(presetName);
+  const normalizedPreset = normalizePreset(presetName);
+  const targetPos = calculatePresetPosition(normalizedPreset);
   const [startX, startY] = mainWindow.getPosition();
   const targetX = targetPos.x;
   const targetY = targetPos.y;
 
+  // Immediately persist setting to disk
+  saveSettings({
+    positionMode: normalizedPreset,
+    lastWindowPosition: { x: targetX, y: targetY }
+  });
+  buildTrayMenu();
+
   if (startX === targetX && startY === targetY) {
-    saveSettings({
-      positionMode: presetName,
-      lastWindowPosition: { x: targetX, y: targetY }
-    });
-    buildTrayMenu();
-    sendToRenderer('position-preset-applied', { preset: presetName, direction: 0, x: targetX, y: targetY });
+    sendToRenderer('position-preset-applied', { preset: normalizedPreset, direction: 0, x: targetX, y: targetY });
     return;
   }
 
@@ -282,9 +297,9 @@ function setPositionPreset(presetName) {
 
   const moveDirection = targetX > startX ? 1 : -1;
   // Notify renderer that preset move started -> suspend proximity dance
-  sendToRenderer('position-preset-moving', { preset: presetName, direction: moveDirection });
+  sendToRenderer('position-preset-moving', { preset: normalizedPreset, direction: moveDirection });
 
-  const duration = 280; // 280ms smooth transition
+  const duration = 220; // 220ms smooth transition
   const startTime = Date.now();
 
   presetAnimationTimer = setInterval(() => {
@@ -309,15 +324,9 @@ function setPositionPreset(presetName) {
       presetAnimationTimer = null;
       mainWindow.setPosition(targetX, targetY);
 
-      saveSettings({
-        positionMode: presetName,
-        lastWindowPosition: { x: targetX, y: targetY }
-      });
-      buildTrayMenu();
-
       // Notify renderer that movement completed -> trigger settling swing and resume idle/proximity
       sendToRenderer('position-preset-applied', {
-        preset: presetName,
+        preset: normalizedPreset,
         direction: moveDirection,
         x: targetX,
         y: targetY

@@ -281,9 +281,15 @@ export class CharmRenderer {
   updatePositionPresetButtons(activePreset) {
     const positionRow = document.getElementById('selectorPositionRow');
     if (!positionRow) return;
+    const norm = String(activePreset || 'top-right').toLowerCase().trim();
     const presetBtns = positionRow.querySelectorAll('.preset-btn');
     presetBtns.forEach((btn) => {
-      btn.classList.toggle('is-active', btn.dataset.preset === activePreset);
+      const btnPreset = String(btn.dataset.preset || '').toLowerCase().trim();
+      const isMatch = btnPreset === norm ||
+                      (btnPreset.includes('left') && norm.includes('left')) ||
+                      (btnPreset.includes('center') && norm.includes('center')) ||
+                      (btnPreset.includes('right') && norm.includes('right'));
+      btn.classList.toggle('is-active', isMatch);
     });
   }
 
@@ -294,7 +300,7 @@ export class CharmRenderer {
     this.renderCategoryTabs();
     this.renderCharmList();
 
-    // Position preset buttons in selector panel
+    // Position preset buttons in selector panel: immediate UI update + instant persistence + window move
     const positionRow = document.getElementById('selectorPositionRow');
     if (positionRow) {
       const presetBtns = positionRow.querySelectorAll('.preset-btn');
@@ -302,8 +308,12 @@ export class CharmRenderer {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const preset = btn.dataset.preset;
-          if (preset && window.electronAPI && window.electronAPI.setPositionPreset) {
-            window.electronAPI.setPositionPreset(preset);
+          if (preset) {
+            SettingsManager.set(SETTINGS_KEYS.POSITION_MODE, preset);
+            this.updatePositionPresetButtons(preset);
+            if (window.electronAPI && window.electronAPI.setPositionPreset) {
+              window.electronAPI.setPositionPreset(preset);
+            }
           }
         });
       });
@@ -315,6 +325,92 @@ export class CharmRenderer {
         this.panelElement.addEventListener(eventType, (e) => {
           e.stopPropagation();
         }, { passive: false });
+      });
+    }
+
+    // Subtle, smooth, premium hover micro-interaction on selector card
+    // Activates ONLY when pointer is directly hovering inside the selector card bounds
+    if (this.panelElement) {
+      let isHoveringPanel = false;
+      let targetOffsetX = 0;
+      let targetOffsetY = 0;
+      let targetRotation = 0;
+      let hoverRafId = null;
+      let currentOffsetX = 0;
+      let currentOffsetY = 0;
+      let currentRotation = 0;
+
+      const updateCardTransform = () => {
+        if (!this.panelElement) return;
+
+        // Smooth interpolation towards target
+        const lerpFactor = isHoveringPanel ? 0.18 : 0.12;
+        currentOffsetX += (targetOffsetX - currentOffsetX) * lerpFactor;
+        currentOffsetY += (targetOffsetY - currentOffsetY) * lerpFactor;
+        currentRotation += (targetRotation - currentRotation) * lerpFactor;
+
+        // Apply restrained transform relative to base translateX(-50%)
+        this.panelElement.style.transform = `translateX(calc(-50% + ${currentOffsetX.toFixed(2)}px)) translateY(${currentOffsetY.toFixed(2)}px) rotate(${currentRotation.toFixed(2)}deg)`;
+
+        // Continue loop if hovering or if not yet settled back to 0
+        if (
+          isHoveringPanel ||
+          Math.abs(currentOffsetX) > 0.04 ||
+          Math.abs(currentOffsetY) > 0.04 ||
+          Math.abs(currentRotation) > 0.04
+        ) {
+          hoverRafId = requestAnimationFrame(updateCardTransform);
+        } else {
+          currentOffsetX = 0;
+          currentOffsetY = 0;
+          currentRotation = 0;
+          this.panelElement.style.transform = 'translateX(-50%) translateY(0px) rotate(0deg)';
+          hoverRafId = null;
+        }
+      };
+
+      const onPanelMouseMove = (e) => {
+        if (!this.isSelectorOpen) return;
+        const rect = this.panelElement.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        const relX = (e.clientX - centerX) / (rect.width / 2);
+        const relY = (e.clientY - centerY) / (rect.height / 2);
+
+        // Clamped subtle offsets: max ±4.0px translation in X, max ±3.0px in Y, max ±0.8° tilt
+        const clampedRelX = Math.max(-1, Math.min(1, relX));
+        const clampedRelY = Math.max(-1, Math.min(1, relY));
+
+        targetOffsetX = clampedRelX * 4.0;
+        targetOffsetY = clampedRelY * 3.0;
+        targetRotation = clampedRelX * 0.8;
+
+        if (!hoverRafId) {
+          hoverRafId = requestAnimationFrame(updateCardTransform);
+        }
+      };
+
+      this.panelElement.addEventListener('mouseenter', (e) => {
+        if (window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
+          window.electronAPI.setIgnoreMouseEvents(false);
+        }
+        isHoveringPanel = true;
+        onPanelMouseMove(e);
+      });
+
+      this.panelElement.addEventListener('mousemove', onPanelMouseMove);
+
+      this.panelElement.addEventListener('mouseleave', () => {
+        isHoveringPanel = false;
+        targetOffsetX = 0;
+        targetOffsetY = 0;
+        targetRotation = 0;
+        if (!hoverRafId) {
+          hoverRafId = requestAnimationFrame(updateCardTransform);
+        }
       });
     }
 
@@ -343,19 +439,6 @@ export class CharmRenderer {
         this.toggleSelector();
       });
     }
-
-    // Mouse capture for selector panel hover
-    if (this.panelElement && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
-      this.panelElement.addEventListener('mouseenter', () => {
-        window.electronAPI.setIgnoreMouseEvents(false);
-      });
-      this.panelElement.addEventListener('mouseleave', () => {
-        if (!this.isSelectorOpen) {
-          window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-        }
-      });
-    }
-  }
 
   /**
    * Render horizontal category filter chips in selector
@@ -499,6 +582,10 @@ export class CharmRenderer {
         this.renderCategoryTabs();
         this.renderCharmList();
         this.renderDailyStatusSection();
+        const currentMode = SettingsManager.get(SETTINGS_KEYS.POSITION_MODE, 'top-right');
+        this.updatePositionPresetButtons(currentMode);
+      } else {
+        this.panelElement.style.transform = 'translateX(-50%) translateY(0px) rotate(0deg)';
       }
     }
 
