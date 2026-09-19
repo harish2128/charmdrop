@@ -278,6 +278,46 @@ export const charms = [
     },
     sound: null,
     description: "Sacred crystal lotus talisman with blooming petals bringing purity and serenity."
+  },
+  {
+    id: "vijay",
+    name: "Vijay",
+    category: "Lucky",
+    image: "assets/charms/lucky/vijay.png",
+    scale: 1,
+    maxWidth: 160,
+    maxHeight: 270,
+    ropeOffsetX: 0,
+    ropeOffsetY: 0,
+    ropeLength: 65,
+    dailyRefresh: false,
+    physics: {
+      weight: 1.0,
+      swingMultiplier: 1.0,
+      dampingMultiplier: 1.0
+    },
+    sound: null,
+    description: "Iconic Thalapathy Vijay portrait charm bringing charismatic screen presence and mass energy."
+  },
+  {
+    id: "ajith",
+    name: "Ajith",
+    category: "Lucky",
+    image: "assets/charms/lucky/ajith.png",
+    scale: 1,
+    maxWidth: 160,
+    maxHeight: 270,
+    ropeOffsetX: 0,
+    ropeOffsetY: 0,
+    ropeLength: 65,
+    dailyRefresh: false,
+    physics: {
+      weight: 1.0,
+      swingMultiplier: 1.0,
+      dampingMultiplier: 1.0
+    },
+    sound: null,
+    description: "Legendary Thala Ajith Kumar portrait charm bringing fearless style and powerful vibe."
   }
 ];
 

@@ -12,6 +12,8 @@ import luckyHorseshoeImage from "../assets/charms/lucky/lucky-horseshoe.png";
 import redLuckyKnotImage from "../assets/charms/lucky/red-lucky-knot.png";
 import yinYangImage from "../assets/charms/lucky/yin-yang.png";
 import luckyLotusImage from "../assets/charms/lucky/lucky-lotus.png";
+import vijayImage from "../assets/charms/lucky/vijay.png";
+import ajithImage from "../assets/charms/lucky/ajith.png";
 
 export const CHARM_CATEGORIES = [
   "All",
@@ -300,6 +302,48 @@ export const charmsData = [
       weight: 0.90,
       swingMultiplier: 1.08,
       dampingMultiplier: 0.997
+    },
+    sound: null
+  },
+  {
+    id: "vijay",
+    name: "Vijay",
+    category: "Lucky",
+    image: vijayImage,
+    iconKey: "vijay",
+    description: "Iconic Thalapathy Vijay portrait charm bringing charismatic screen presence and mass energy.",
+    color: "#3B82F6",
+    accentColor: "#60A5FA",
+    isNew: true,
+    isDaily: false,
+    isPopular: true,
+    tag: "Mass Aura",
+    swingSpeed: 3.3,
+    physics: {
+      weight: 1.0,
+      swingMultiplier: 1.0,
+      dampingMultiplier: 1.0
+    },
+    sound: null
+  },
+  {
+    id: "ajith",
+    name: "Ajith",
+    category: "Lucky",
+    image: ajithImage,
+    iconKey: "ajith",
+    description: "Legendary Thala Ajith Kumar portrait charm bringing fearless style and powerful vibe.",
+    color: "#E11D48",
+    accentColor: "#FB7185",
+    isNew: true,
+    isDaily: false,
+    isPopular: true,
+    tag: "Fearless Style",
+    swingSpeed: 3.3,
+    physics: {
+      weight: 1.0,
+      swingMultiplier: 1.0,
+      dampingMultiplier: 1.0
     },
     sound: null
   }

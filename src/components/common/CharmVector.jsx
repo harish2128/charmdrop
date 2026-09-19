@@ -12,6 +12,8 @@ import luckyHorseshoeImage from "../../assets/charms/lucky/lucky-horseshoe.png";
 import redLuckyKnotImage from "../../assets/charms/lucky/red-lucky-knot.png";
 import yinYangImage from "../../assets/charms/lucky/yin-yang.png";
 import luckyLotusImage from "../../assets/charms/lucky/lucky-lotus.png";
+import vijayImage from "../../assets/charms/lucky/vijay.png";
+import ajithImage from "../../assets/charms/lucky/ajith.png";
 
 const CHARM_IMAGE_MAP = {
   "nimbu-mirchi": nimbuMirchiImage,
@@ -29,6 +31,8 @@ const CHARM_IMAGE_MAP = {
   "red-lucky-knot": redLuckyKnotImage,
   "yin-yang": yinYangImage,
   "lucky-lotus": luckyLotusImage,
+  "vijay": vijayImage,
+  "ajith": ajithImage,
 };
 
 export function CharmVector({ 
@@ -52,6 +56,8 @@ export function CharmVector({
       };
 
   const resolvedImage = image || (iconKey ? CHARM_IMAGE_MAP[iconKey] : null);
+  const isPortraitCharm = iconKey === "vijay" || iconKey === "ajith";
+  const sizeMultiplier = isPortraitCharm ? 2.25 : 1.55;
 
   if (resolvedImage) {
     return (
@@ -62,8 +68,8 @@ export function CharmVector({
           alignItems: "flex-start",
           justifyContent: "center",
           transformOrigin: "top center",
-          height: `${Math.round(size * 1.55)}px`,
-          maxHeight: `${Math.round(size * 1.55)}px`
+          height: `${Math.round(size * sizeMultiplier)}px`,
+          maxHeight: `${Math.round(size * sizeMultiplier)}px`
         }}
       >
         <img

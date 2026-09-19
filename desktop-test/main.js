@@ -49,7 +49,9 @@ let availableCharms = [
   { id: 'lucky-horseshoe', name: 'Lucky Horseshoe', category: 'Lucky' },
   { id: 'red-lucky-knot', name: 'Red Lucky Knot', category: 'Lucky' },
   { id: 'yin-yang', name: 'Yin Yang', category: 'Lucky' },
-  { id: 'lucky-lotus', name: 'Lucky Lotus', category: 'Lucky' }
+  { id: 'lucky-lotus', name: 'Lucky Lotus', category: 'Lucky' },
+  { id: 'vijay', name: 'Vijay', category: 'Lucky' },
+  { id: 'ajith', name: 'Ajith', category: 'Lucky' }
 ];
 
 const APPROVED_CHARM_IDS = new Set(availableCharms.map((c) => c.id));

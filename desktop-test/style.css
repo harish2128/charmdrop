@@ -78,7 +78,7 @@ html, body {
 .nimbu-image {
   display: block;
   width: 108px;
-  max-width: 120px;
+  max-width: 180px;
   height: auto;
   object-fit: contain;
   transform-origin: top center;
