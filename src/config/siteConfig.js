@@ -4,14 +4,14 @@ export const siteConfig = {
   heroSupportText: "Bring personality, motion and a little luck to your Windows desktop.",
   supportedOS: "Windows 10 & 11",
   pricing: "Completely Free",
-  version: "1.0.2",
+  version: "1.0.3",
   download: {
     windows: {
-      version: "1.0.2",
-      filename: "CharmDrop-Setup-1.0.2.exe",
-      fileSize: "88.1 MB",
-      url: "https://github.com/harish2128/charmdrop/releases/download/v1.0.2/CharmDrop-Setup-1.0.2.exe",
-      releaseTag: "v1.0.2",
+      version: "1.0.3",
+      filename: "CharmDrop-Setup-1.0.3.exe",
+      fileSize: "91.7 MB",
+      url: "https://github.com/harish2128/charmdrop/releases/download/v1.0.3/CharmDrop-Setup-1.0.3.exe",
+      releaseTag: "v1.0.3",
       architecture: "64-bit",
       supportedOS: "Windows 10 & Windows 11"
     },
