@@ -21,6 +21,8 @@ export const ENGINE_STATES = {
   SETTLING: 'SETTLING'
 };
 
+const WINDOW_WIDTH = 340;
+const WINDOW_HEIGHT = 440;
 const WINDOW_CENTER_X = 170;
 const ANCHOR_Y = 0;
 const CHARM_CENTER_Y = 135;
@@ -247,6 +249,7 @@ export class CharmEngine {
 
         // Enable click interaction when near charm
         if (this.isIgnoringMouse && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
+          console.log('[CharmEngine] CHARM POINTER ENTER', { localX, localY, dist });
           window.electronAPI.setIgnoreMouseEvents(false);
           this.isIgnoringMouse = false;
         }
@@ -347,18 +350,18 @@ export class CharmEngine {
     this.state = ENGINE_STATES.DRAGGING;
     this.container.classList.add('is-grabbing');
 
-    const clientX = e.clientX;
-    const clientY = e.clientY;
+    this.dragStartScreenX = e.screenX;
+    this.dragStartClientY = e.clientY;
+    this.lastScreenX = e.screenX;
 
-    const lastP = this.points[this.numPoints - 1] || { x: WINDOW_CENTER_X, y: this.ropeLength };
-    this.grabOffsetX = clientX - lastP.x;
-    this.grabOffsetY = clientY - (lastP.y + 35);
-
-    this.dragStartX = clientX;
-    this.dragStartY = clientY;
+    this.restingY = this.ropeLength || 70;
+    this.currentPullY = 0;
 
     this.pointerTrail.length = 0;
-    this.pointerTrail.push({ clientX, clientY, time: performance.now() });
+    this.pointerTrail.push({ screenX: e.screenX, clientY: e.clientY, time: performance.now() });
+
+    console.log('[CharmEngine] CHARM POINTER DOWN', { screenX: e.screenX, clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId });
+    console.log('[CharmEngine] CHARM DRAG START', { startScreenX: this.lastScreenX, restingY: this.restingY });
 
     if (this.isIgnoringMouse && window.electronAPI && window.electronAPI.setIgnoreMouseEvents) {
       window.electronAPI.setIgnoreMouseEvents(false);
@@ -369,20 +372,42 @@ export class CharmEngine {
   handleDragMove(e) {
     if (!this.isDragging) return;
 
-    const clientX = e.clientX;
-    const clientY = e.clientY;
+    const deltaScreenX = e.screenX - this.lastScreenX;
+    this.lastScreenX = e.screenX;
 
-    // Follow cursor within transparent charm canvas (Top anchor at 170, 0 stays fixed)
-    const targetDragX = Math.max(25, Math.min(WINDOW_WIDTH - 25, clientX - (this.grabOffsetX || 0)));
-    const targetDragY = Math.max(ANCHOR_Y + 35, Math.min(WINDOW_HEIGHT - 55, clientY - (this.grabOffsetY || 0) - 35));
+    // 1. Horizontal desktop positioning (Moves window horizontally only at fixed screen top)
+    if (deltaScreenX !== 0 && window.electronAPI && window.electronAPI.moveCharmWindow) {
+      window.electronAPI.moveCharmWindow(deltaScreenX, 0);
+    }
 
-    const lastP = this.points[this.numPoints - 1];
-    lastP.x = targetDragX;
-    lastP.y = targetDragY;
+    // 2. Physical downward pull in local canvas space (Window Y never moves)
+    const deltaClientY = e.clientY - this.dragStartClientY;
+    const maxPull = Math.max(60, Math.min(200, (WINDOW_HEIGHT - 65) - this.restingY));
+    const pullY = Math.max(0, Math.min(maxPull, deltaClientY));
+    this.currentPullY = pullY;
+
+    // Apply natural dynamic inertia sway + downward pull to rope particles
+    const swayOffset = Math.max(-14, Math.min(14, -deltaScreenX * 0.50 * this.charmPhysics.swingMultiplier));
+    const targetX = WINDOW_CENTER_X + swayOffset;
+    const targetY = this.restingY + pullY;
+
+    const lastIdx = this.numPoints - 1;
+    this.points[lastIdx].x = targetX;
+    this.points[lastIdx].y = targetY;
+
+    // Distribute intermediate rope points between fixed top anchor (170, 0) and (targetX, targetY)
+    for (let i = 1; i < lastIdx; i++) {
+      const t = i / lastIdx;
+      const sag = Math.sin(t * Math.PI) * (pullY > 10 ? 2.0 : 4.0);
+      this.points[i].x = WINDOW_CENTER_X * (1 - t) + targetX * t;
+      this.points[i].y = ANCHOR_Y * (1 - t) + targetY * t + sag;
+    }
 
     this.applyConstraints();
 
-    this.pointerTrail.push({ clientX, clientY, time: performance.now() });
+    console.log('[CharmEngine] CHARM POINTER MOVE', { deltaScreenX, pullY, targetY, screenX: e.screenX });
+
+    this.pointerTrail.push({ screenX: e.screenX, clientY: e.clientY, time: performance.now() });
     while (this.pointerTrail.length > 6) {
       this.pointerTrail.shift();
     }
@@ -400,24 +425,27 @@ export class CharmEngine {
       const newest = this.pointerTrail[this.pointerTrail.length - 1];
       const timeDiff = Math.max(16, newest.time - oldest.time);
       const frames = timeDiff / 16.67;
-      releaseVx = (newest.clientX - oldest.clientX) / frames;
-      releaseVy = (newest.clientY - oldest.clientY) / frames;
+      releaseVx = (newest.screenX - oldest.screenX) / frames;
+      releaseVy = ((newest.clientY || 0) - (oldest.clientY || 0)) / frames;
     }
 
-    // Inject gentle, natural release momentum into lower rope points (no violent flick)
-    const lastP = this.points[this.numPoints - 1];
-    const boost = Math.max(-5.0, Math.min(5.0, releaseVx * 0.35 * this.charmPhysics.swingMultiplier));
-    lastP.oldX = lastP.x - boost;
-    lastP.oldY = lastP.y - Math.max(-2.5, Math.min(2.5, releaseVy * 0.25));
+    console.log('[CharmEngine] CHARM POINTER UP (Auto-Returning to Top)', { releaseVx, releaseVy, pullY: this.currentPullY });
 
-    // Propagate momentum wave to neighboring lower points for natural settlement
-    const lowerStart = Math.floor(this.numPoints * 0.55);
-    for (let i = this.numPoints - 2; i >= lowerStart; i--) {
-      const factor = (i - lowerStart) / (this.numPoints - 1 - lowerStart);
-      this.points[i].oldX = this.points[i].x - boost * factor * 0.60;
+    // Inject gentle, natural release momentum & upward return into bottom particle
+    const lastP = this.points[this.numPoints - 1];
+    const boostX = Math.max(-5.0, Math.min(5.0, -releaseVx * 0.30 * this.charmPhysics.swingMultiplier));
+    const reboundY = this.currentPullY > 5 ? Math.min(0, Math.max(-4.5, releaseVy * 0.20 - 1.5)) : 0;
+    if (lastP) {
+      lastP.oldX = lastP.x - boostX;
+      lastP.oldY = lastP.y - reboundY;
     }
 
     this.state = ENGINE_STATES.SETTLING;
+
+    // Persist new custom horizontal desktop position in settings (Y remains at top)
+    if (window.electronAPI && window.electronAPI.saveCharmPosition) {
+      window.electronAPI.saveCharmPosition();
+    }
   }
 
   startAnimationLoop() {
@@ -492,10 +520,14 @@ export class CharmEngine {
       const fIdle = idleWind * inf * 0.028 * (1.0 - this.proximityFactor);
       const fPush = this.cursorPushDirX * this.proximityFactor * basePushForce * inf * stationaryRelaxation;
       const fWake = this.cursorVx * wakeStrength * this.proximityFactor * inf;
-      const combinedForceX = Math.max(-1.8, Math.min(1.8, fIdle + fPush + fWake));
+      const combinedForceX = Math.max(-1.5, Math.min(1.5, fIdle + fPush + fWake));
 
       p.x += vx + combinedForceX * dtScale;
       p.y += vy + (gravity * dtScale);
+
+      // Safety bounds to guarantee points remain inside local window canvas
+      p.x = Math.max(20, Math.min(WINDOW_WIDTH - 20, p.x));
+      p.y = Math.max(ANCHOR_Y, Math.min(WINDOW_HEIGHT - 40, p.y));
     }
 
     // Apply distance constraints
@@ -569,12 +601,43 @@ export class CharmEngine {
     this.cursorPushDirX = 0;
     this.currentDist = 9999;
     this.cursorVx = 0;
+    this.cursorVy = 0;
+    this.lastCursorLocalX = null;
+    this.lastCursorLocalY = null;
+    this.lastCursorTime = 0;
+    this.stationaryTime = 0;
+    this.isInsideInteractionZone = false;
   }
 
   resumeAfterPresetMove(direction = 0) {
     this.isPresetMoving = false;
+    this.proximityFactor = 0;
+    this.cursorPushDirX = 0;
+    this.currentDist = 9999;
+    this.cursorVx = 0;
+    this.cursorVy = 0;
+    this.lastCursorLocalX = null;
+    this.lastCursorLocalY = null;
+    this.lastCursorTime = 0;
+    this.stationaryTime = 0;
+    this.isInsideInteractionZone = false;
+
+    // Validate and sanitize rope points inside local canvas space
+    let needsReset = false;
+    for (let i = 0; i < this.numPoints; i++) {
+      const p = this.points[i];
+      if (!p || isNaN(p.x) || isNaN(p.y) || !isFinite(p.x) || !isFinite(p.y) || Math.abs(p.x - WINDOW_CENTER_X) > 130) {
+        needsReset = true;
+        break;
+      }
+    }
+
+    if (needsReset) {
+      this.resetRope(this.ropeLength);
+    }
+
     if (direction !== 0) {
-      const impulse = -direction * 4.5;
+      const impulse = -direction * 2.5;
       const lastP = this.points[this.numPoints - 1];
       if (lastP) {
         lastP.oldX = lastP.x - impulse;

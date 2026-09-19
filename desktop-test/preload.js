@@ -7,11 +7,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Hanging Charm Window Drag & Position (OBJECT A)
-  moveCharmWindow: (deltaX) => {
-    ipcRenderer.send('move-charm-window', deltaX);
+  moveCharmWindow: (deltaX, deltaY) => {
+    if (typeof deltaX === 'object') {
+      ipcRenderer.send('move-charm-window', deltaX);
+    } else {
+      ipcRenderer.send('move-charm-window', { deltaX, deltaY: deltaY || 0 });
+    }
   },
-  moveWindowBy: (deltaX) => {
-    ipcRenderer.send('move-charm-window', deltaX);
+  moveWindowBy: (deltaX, deltaY) => {
+    if (typeof deltaX === 'object') {
+      ipcRenderer.send('move-charm-window', deltaX);
+    } else {
+      ipcRenderer.send('move-charm-window', { deltaX, deltaY: deltaY || 0 });
+    }
   },
   saveCharmPosition: () => {
     ipcRenderer.send('save-charm-position');

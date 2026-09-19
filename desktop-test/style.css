@@ -62,8 +62,11 @@ html, body {
   align-items: center;
   cursor: grab;
   touch-action: none;
-  padding: 0;
+  padding: 6px 10px;
   margin: 0;
+  min-width: 96px;
+  min-height: 120px;
+  pointer-events: auto;
 }
 
 .charm-container:active,

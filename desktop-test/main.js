@@ -240,6 +240,11 @@ function calculatePresetPosition(preset, targetDisplay = null) {
       break;
   }
 
+  // Ensure window is strictly within display workArea bounds
+  const minX = wa.x;
+  const maxX = Math.max(wa.x, wa.x + wa.width - WINDOW_WIDTH);
+  x = Math.max(minX, Math.min(maxX, x));
+
   return { x, y };
 }
 
@@ -281,7 +286,7 @@ function getValidatedSelectorPosition(savedPos) {
     const primary = screen.getPrimaryDisplay();
     const wa = primary.workArea;
     return {
-      x: Math.round(wa.x + wa.width - SELECTOR_WIDTH - 30),
+      x: Math.round(wa.x + wa.width - SELECTOR_WIDTH - 370),
       y: Math.round(wa.y + 70)
     };
   }
@@ -304,7 +309,7 @@ function getValidatedSelectorPosition(savedPos) {
   const primary = screen.getPrimaryDisplay();
   const wa = primary.workArea;
   return {
-    x: Math.round(wa.x + wa.width - SELECTOR_WIDTH - 30),
+    x: Math.round(wa.x + wa.width - SELECTOR_WIDTH - 370),
     y: Math.round(wa.y + 70)
   };
 }
@@ -338,6 +343,10 @@ function setPositionPreset(presetName) {
   // Broadcast to selector window immediately
   if (selectorWindow && !selectorWindow.isDestroyed()) {
     selectorWindow.webContents.send('position-preset-applied', { preset: normalizedPreset, direction: 0, x: targetX, y: targetY });
+  }
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.moveTop();
   }
 
   if (startX === targetX && startY === targetY) {
@@ -438,7 +447,7 @@ let cursorPollingInterval = null;
 function startCursorPolling() {
   if (cursorPollingInterval) return;
   cursorPollingInterval = setInterval(() => {
-    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !presetAnimationTimer) {
       const cursorPoint = screen.getCursorScreenPoint();
       const [winX, winY] = mainWindow.getPosition();
       const localX = cursorPoint.x - winX;
@@ -505,8 +514,15 @@ function createWindow() {
     }
   });
 
-  // Handle horizontal charm dragging (Moves Charm Window ONLY)
-  const handleCharmMove = (deltaX) => {
+  // Handle horizontal charm dragging (Moves Charm Window horizontally ONLY at display top)
+  const handleCharmMove = (data) => {
+    let deltaX = 0;
+    if (typeof data === 'number') {
+      deltaX = data;
+    } else if (data && typeof data === 'object') {
+      deltaX = data.deltaX || 0;
+    }
+
     if (presetAnimationTimer) {
       clearInterval(presetAnimationTimer);
       presetAnimationTimer = null;
@@ -517,23 +533,28 @@ function createWindow() {
       const wa = currentDisplay.workArea;
 
       // Ensure charm window stays anchored to top work area while allowing free horizontal movement
-      const minX = wa.x - (WINDOW_WIDTH / 2) + 50;
-      const maxX = wa.x + wa.width - (WINDOW_WIDTH / 2) - 50;
+      const minX = wa.x;
+      const maxX = Math.max(wa.x, wa.x + wa.width - WINDOW_WIDTH);
       const newX = Math.round(Math.max(minX, Math.min(maxX, currX + deltaX)));
 
       mainWindow.setPosition(newX, wa.y);
+      if (selectorWindow && !selectorWindow.isDestroyed()) {
+        mainWindow.moveTop();
+      }
     }
   };
 
-  ipcMain.on('move-charm-window', (event, deltaX) => handleCharmMove(deltaX));
-  ipcMain.on('move-window-by', (event, deltaX) => handleCharmMove(deltaX));
+  ipcMain.on('move-charm-window', (event, data) => handleCharmMove(data));
+  ipcMain.on('move-window-by', (event, data) => handleCharmMove(data));
 
   // Handle saving charm window position on drag release (Saves Charm Window ONLY)
   const handleCharmSave = () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const [currX, currY] = mainWindow.getPosition();
+      const currentDisplay = screen.getDisplayNearestPoint({ x: currX + (WINDOW_WIDTH / 2), y: currY });
+      const wa = currentDisplay.workArea;
       saveSettings({
-        lastWindowPosition: { x: currX, y: currY },
+        lastWindowPosition: { x: currX, y: wa.y },
         positionMode: 'custom'
       });
       buildTrayMenu();
@@ -655,7 +676,7 @@ function createSelectorWindow() {
     }
   });
 
-  selectorWindow.setAlwaysOnTop(true, 'screen-saver');
+  selectorWindow.setAlwaysOnTop(true, 'floating', 0);
   if (selectorWindow.setVisibleOnAllWorkspaces) {
     selectorWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
@@ -676,6 +697,9 @@ function toggleSelectorWindow() {
     selectorWindow.once('ready-to-show', () => {
       selectorWindow.show();
       selectorWindow.focus();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.moveTop();
+      }
     });
     return;
   }
@@ -685,6 +709,9 @@ function toggleSelectorWindow() {
   } else {
     selectorWindow.show();
     selectorWindow.focus();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.moveTop();
+    }
   }
 }
 
@@ -705,6 +732,9 @@ const handleSelectorMove = ({ deltaX, deltaY }) => {
     const newY = Math.round(Math.max(minY, Math.min(maxY, currY + (deltaY || 0))));
 
     selectorWindow.setPosition(newX, newY);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.moveTop();
+    }
   }
 };
 
